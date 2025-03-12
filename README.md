@@ -22,6 +22,11 @@ Edit /var/ossec/etc/shared/**_your_linux_docker_group_**/agent.conf and add the 
   <run_on_start>yes</run_on_start>
   <timeout>0</timeout>
 </wodle>
+
+<localfile>
+    <log_format>syslog</log_format>
+    <location>/var/ossec/logs/trivy_scan.log</location>
+</localfile>
 ```
 
 Snyk Scan detection rules:
