@@ -18,7 +18,7 @@ Edit /var/ossec/etc/shared/**_your_linux_docker_group_**/agent.conf and add the 
 <!-- Trivy container vulnerability scanner script -->
 <wodle name="command">
   <disabled>no</disabled>
-  <command>/bin/bash /var/ossec/etc/shared/trivy_scan.sh</command>
+  <command>/bin/bash /var/ossec/wodles/trivy_scan.sh</command>
   <interval>12h</interval>
   <ignore_output>no</ignore_output>
   <run_on_start>yes</run_on_start>
