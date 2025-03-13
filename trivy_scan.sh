@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2024, DevOpsTales.
+# Copyright (C) 2025, ADORSYS GmbH & CO KG.
 
 # Directory to save the custom output template
 TEMPLATE_FILE="$(mktemp)"
