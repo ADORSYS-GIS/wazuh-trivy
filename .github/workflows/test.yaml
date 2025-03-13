@@ -14,14 +14,14 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Install dependencies and wazuh agent
+    - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y bats curl jq sed
     
     - name: install wazuh agent
       run: |
-        curl -sfL https://raw.githubusercontent.com/adorsys-gis/wazuh-agent/main/scripts/install.sh | sudo bash
+        curl -sfL https://raw.githubusercontent.com/adorsys-gis/wazuh-agent/main/scripts/install.sh | sudo WAZUH_AGENT_VERSION=4.10.1-1 WAZUH_MANAGER=127.0.0.1 bash
 
     - name: Install Trivy
       run: |
