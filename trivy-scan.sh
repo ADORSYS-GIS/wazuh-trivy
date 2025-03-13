@@ -55,6 +55,11 @@ else
     exit 1
 fi
 
+if [ -z "$images" ]; then
+  echo "Trivy: No images found. Exiting..." >> "$LOG_FILE"
+  exit 1
+fi
+
 # Loop through each container image and run Trivy scan
 for image in $images; do
     # Run Trivy scan on the current image using the custom output template

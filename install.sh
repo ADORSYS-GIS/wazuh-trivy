@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Check if we're running in bash; if not, adjust behavior
 if [ -n "$BASH_VERSION" ]; then
@@ -16,7 +16,7 @@ OSSEC_USER=${OSSEC_USER:-"root"}
 OSSEC_GROUP=${OSSEC_GROUP:-"wazuh"}
 TRIVY_SCAN_SCRIPT_PATH=${TRIVY_SCAN_SCRIPT_PATH:-"$OSSEC_SHARED_DIR/trivy-scan.sh"}
 TRIVY_SCAN_LOG_PATH=${TRIVY_SCAN_LOG_PATH:-"$OSSEC_LOG_DIR/trivy-scan.log"}
-TRIVY_SCAN_SCRIPT_URL=${TRIVY_SCAN_SCRIPT_URL:-"https://raw.githubusercontent.com/ADORSYS-GIS/wazuh-trivy/refs/heads/main/trivy_scan.sh"}
+TRIVY_SCAN_SCRIPT_URL=${TRIVY_SCAN_SCRIPT_URL:-"https://raw.githubusercontent.com/ADORSYS-GIS/wazuh-trivy/main/trivy-scan.sh"}
 LOCAL_INTERNAL_OPTIONS_CONF=${LOCAL_INTERNAL_OPTIONS_CONF:-"$OSSEC_CONF_DIR/local_internal_options.conf"}
 REMOTE_COMMANDS_CONFIG=${REMOTE_COMMANDS_CONFIG:-"wazuh_command.remote_commands=1"} 
 
