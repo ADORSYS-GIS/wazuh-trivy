@@ -69,6 +69,3 @@ for image in $images; do
         echo "$formatted_line" >> "$LOG_FILE"
     done <<< "$trivy_output"
 done
-
-# Clean up the custom output template
-rm -f "$TEMPLATE_FILE"
