@@ -154,6 +154,8 @@ if has_container_engine; then
     setup_trivy_scan_script
 
     configure_remote_commands
+    
+    create_trivy_log_file
 else
     error_message "No container engine (Docker or Podman) detected. Trivy cannot be installed."
     exit 1

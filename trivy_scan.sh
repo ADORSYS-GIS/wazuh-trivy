@@ -8,7 +8,7 @@ TEMPLATE_FILE="$(mktemp)"
 LOG_FILE="/var/ossec/logs/trivy-scan.log"
 
 cleanup() {
-    # Remove temporary folder
+    # Remove temporary file
     if [ -f "$TEMPLATE_FILE" ]; then
         rm -f "$TEMPLATE_FILE"
     fi
