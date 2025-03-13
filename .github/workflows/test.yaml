@@ -18,7 +18,10 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y bats curl jq sed
-        curl -sfL https://raw.githubusercontent.com/adorsys-gis/wazuh-agent/main/scripts/install.sh | bash
+    
+    - name: install wazuh agent
+      run: |
+        curl -sfL https://raw.githubusercontent.com/adorsys-gis/wazuh-agent/main/scripts/install.sh | sudo bash
 
     - name: Install Trivy
       run: |
