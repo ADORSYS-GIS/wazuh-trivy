@@ -1,0 +1,34 @@
+name: Bats Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bats curl jq sed
+    
+    - name: install wazuh agent
+      run: |
+        curl -sfL https://raw.githubusercontent.com/adorsys-gis/wazuh-agent/main/scripts/install.sh | sudo WAZUH_AGENT_VERSION=4.10.1-1 WAZUH_MANAGER=127.0.0.1 bash
+
+    - name: Install Trivy
+      run: |
+        sudo ./install.sh
+
+    - name: Make script executable
+      run: chmod +x ./install.sh
+
+    - name: Run Bats tests
+      run: sudo bats tests/

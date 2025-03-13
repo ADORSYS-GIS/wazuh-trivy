@@ -1,16 +1,15 @@
 # wazuh-trivy
 
+[![Test install.sh](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/test.yml)
+
 Wazuh and Trivy integration to scan Docker image vulnerabilities.
 
 ## Install
 
-Create a custom script directory `/var/ossec/custom-script/` and create a new file `trivy_scan.sh`.
-
-Remote commands execution must be enabled in the agent (Docker host), file “local_internal_options.conf”:
+Use the install script to download and install Trivy and configure your wazuh-agent as it should.
 
 ```bash
-# Wazuh Command Module - If it should accept remote commands from the manager
-wazuh_command.remote_commands=1
+curl -SL --progress-bar https://raw.githubusercontent.com/ADORSYS-GIS/wazuh-trivy/refs/heads/main/install.sh | bash
 ```
 
 Edit /var/ossec/etc/shared/**_your_linux_docker_group_**/agent.conf and add the remote command:
@@ -25,6 +24,11 @@ Edit /var/ossec/etc/shared/**_your_linux_docker_group_**/agent.conf and add the 
   <run_on_start>yes</run_on_start>
   <timeout>0</timeout>
 </wodle>
+
+<localfile>
+    <log_format>syslog</log_format>
+    <location>/var/ossec/logs/trivy_scan.log</location>
+</localfile>
 ```
 
 Snyk Scan detection rules:
