@@ -1,5 +1,7 @@
 # wazuh-trivy
 
+[![Test install.sh](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/test.yml)
+
 Wazuh and Trivy integration to scan Docker image vulnerabilities.
 
 ## Install
