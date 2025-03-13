@@ -11,9 +11,11 @@ LOG_LEVEL=${LOG_LEVEL:-"INFO"}
 TRIVY_VERSION=${TRIVY_VERSION:-"v0.60.0"}
 OSSEC_WODLES_DIR=${OSSEC_WODLES_DIR:-"/var/ossec/wodles"}
 OSSEC_CONF_DIR=${OSSEC_CONF_DIR:-"/var/ossec/etc"}
+OSSEC_LOG_DIR=${OSSEC_LOG_DIR:-"/var/ossec/logs"}
 OSSEC_USER=${OSSEC_USER:-"root"}
 OSSEC_GROUP=${OSSEC_GROUP:-"wazuh"}
-TRIVY_SCAN_SCRIPT_PATH=${TRIVY_SCAN_SCRIPT_PATH:-"$OSSEC_WODLES_DIR/trivy_scan.sh"}
+TRIVY_SCAN_SCRIPT_PATH=${TRIVY_SCAN_SCRIPT_PATH:-"$OSSEC_WODLES_DIR/trivy-scan.sh"}
+TRIVY_SCAN_LOG_PATH=${TRIVY_SCAN_LOG_PATH:-"$OSSEC_LOG_DIR/trivy-scan.log"}
 TRIVY_SCAN_SCRIPT_URL=${TRIVY_SCAN_SCRIPT_URL:-"https://raw.githubusercontent.com/ADORSYS-GIS/wazuh-trivy/refs/heads/main/trivy_scan.sh"}
 LOCAL_INTERNAL_OPTIONS_CONF=${LOCAL_INTERNAL_OPTIONS_CONF:-"$OSSEC_CONF_DIR/local_internal_options.conf"}
 REMOTE_COMMANDS_CONFIG=${REMOTE_COMMANDS_CONFIG:-"wazuh_command.remote_commands=1"} 
@@ -126,6 +128,18 @@ configure_remote_commands() {
         success_message "Remote commands configuration added successfully."
     else
         info_message "Remote commands configuration is already present."
+    fi
+}
+
+create_trivy_log_file() {
+
+    if [ ! -f "$TRIVY_SCAN_LOG_PATH" ]; then
+        info_message "Creating trivy log file..."
+        maybe_sudo touch "$TRIVY_SCAN_LOG_PATH"
+        maybe_sudo chown "$OSSEC_USER:$OSSEC_GROUP" "$TRIVY_SCAN_LOG_PATH"
+        success_message "Trivy log file created successfully."
+    else
+        info_message "Trivy log file already exists, skipping."
     fi
 }
 

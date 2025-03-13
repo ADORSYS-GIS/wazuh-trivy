@@ -5,7 +5,7 @@
 TEMPLATE_FILE="$(mktemp)"
 
 # Monitored log file for Wazuh
-LOG_FILE="/var/ossec/logs/trivy_scan.log"
+LOG_FILE="/var/ossec/logs/trivy-scan.log"
 
 cleanup() {
     # Remove temporary folder
