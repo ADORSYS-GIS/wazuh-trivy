@@ -2,7 +2,7 @@
 # Copyright (C) 2025, ADORSYS GmbH & CO KG.
 
 # Directory to save the custom output template
-TEMPLATE_FILE="$(mktemp)"
+TEMPLATE_FILE="/tmp/trivy-custom.tmpl"
 
 # Monitored log file for Wazuh
 LOG_FILE="/var/ossec/logs/trivy-scan.log"
@@ -63,7 +63,7 @@ fi
 # Loop through each container image and run Trivy scan
 for image in $images; do
     # Run Trivy scan on the current image using the custom output template
-    trivy_output=$(trivy -q --scanners vuln i --format template --template '@/tmp/tsv.tpl' $image)
+    trivy_output=$(trivy -q --scanners vuln i --format template --template '@/tmp/trivy-custom.tmpl' $image)
 
     # Process Trivy output for the current image
     while IFS= read -r line; do
