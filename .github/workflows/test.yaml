@@ -8,7 +8,10 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - name: Checkout repository
@@ -16,10 +19,14 @@ jobs:
 
     - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y bats curl jq sed
-    
-    - name: install wazuh agent
+        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+          sudo apt-get update
+          sudo apt-get install -y bats curl jq sed
+        elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+          brew install bats coreutils curl jq gnu-sed docker
+        fi
+
+    - name: Install Wazuh agent
       run: |
         curl -sfL https://raw.githubusercontent.com/adorsys-gis/wazuh-agent/main/scripts/install.sh | sudo WAZUH_AGENT_VERSION=4.10.1-1 WAZUH_MANAGER=127.0.0.1 bash
 

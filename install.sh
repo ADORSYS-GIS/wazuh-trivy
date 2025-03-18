@@ -9,9 +9,16 @@ fi
 
 LOG_LEVEL=${LOG_LEVEL:-"INFO"}
 TRIVY_VERSION=${TRIVY_VERSION:-"v0.60.0"}
-OSSEC_WODLES_DIR=${OSSEC_WODLES_DIR:-"/var/ossec/wodles"}
-OSSEC_CONF_DIR=${OSSEC_CONF_DIR:-"/var/ossec/etc"}
-OSSEC_LOG_DIR=${OSSEC_LOG_DIR:-"/var/ossec/logs"}
+
+if [ "$(uname)" = "Darwin" ]; then
+    OSSEC_WODLES_DIR=${OSSEC_WODLES_DIR:-"/Library/Ossec/wodles"}
+    OSSEC_CONF_DIR=${OSSEC_CONF_DIR:-"/Library/Ossec/etc"}
+    OSSEC_LOG_DIR=${OSSEC_LOG_DIR:-"/Library/Ossec/logs"}
+else
+    OSSEC_WODLES_DIR=${OSSEC_WODLES_DIR:-"/var/ossec/wodles"}
+    OSSEC_CONF_DIR=${OSSEC_CONF_DIR:-"/var/ossec/etc"}
+    OSSEC_LOG_DIR=${OSSEC_LOG_DIR:-"/var/ossec/logs"}
+fi
 OSSEC_USER=${OSSEC_USER:-"root"}
 OSSEC_GROUP=${OSSEC_GROUP:-"wazuh"}
 TRIVY_SCAN_SCRIPT_PATH=${TRIVY_SCAN_SCRIPT_PATH:-"$OSSEC_WODLES_DIR/trivy-scan.sh"}
@@ -96,7 +103,7 @@ install_trivy() {
             fi
             success_message "Trivy installed successfully."
         else
-            error_message "No container engine (Docker or Podman) found. Trivy requires a container engine to function."
+            error_message "No container engine (Docker or Podman or Containerd) found. Trivy requires a container engine to function."
             exit 1
         fi
     else
@@ -104,19 +111,19 @@ install_trivy() {
     fi
 }
 
-# Download and configure the trivy_scan.sh script
+# Download and configure the trivy-scan.sh script
 setup_trivy_scan_script() {
-    info_message "Downloading trivy_scan.sh script..."
+    info_message "Downloading trivy-scan.sh script..."
     if ! (maybe_sudo curl -SL -s "$TRIVY_SCAN_SCRIPT_URL" -o "$TRIVY_SCAN_SCRIPT_PATH"); then
-        error_message "Failed to download trivy_scan.sh script."
+        error_message "Failed to download trivy-scan.sh script."
         exit 1
     fi
 
-    info_message "Setting permissions for trivy_scan.sh..."
+    info_message "Setting permissions for trivy-scan.sh..."
     maybe_sudo chown "$OSSEC_USER:$OSSEC_GROUP" "$TRIVY_SCAN_SCRIPT_PATH"
     maybe_sudo chmod 750 "$TRIVY_SCAN_SCRIPT_PATH"
 
-    success_message "trivy_scan.sh script downloaded and configured successfully."
+    success_message "trivy-scan.sh script downloaded and configured successfully."
 }
 
 # Ensure the remote_commands configuration is present in local_internal_options.conf
