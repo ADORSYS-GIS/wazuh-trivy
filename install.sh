@@ -103,7 +103,7 @@ install_trivy() {
             fi
             success_message "Trivy installed successfully."
         else
-            error_message "No container engine (Docker or Podman) found. Trivy requires a container engine to function."
+            error_message "No container engine (Docker or Podman or Containerd) found. Trivy requires a container engine to function."
             exit 1
         fi
     else
