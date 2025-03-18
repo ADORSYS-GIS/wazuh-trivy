@@ -9,9 +9,16 @@ fi
 
 LOG_LEVEL=${LOG_LEVEL:-"INFO"}
 TRIVY_VERSION=${TRIVY_VERSION:-"v0.60.0"}
-OSSEC_WODLES_DIR=${OSSEC_WODLES_DIR:-"/var/ossec/wodles"}
-OSSEC_CONF_DIR=${OSSEC_CONF_DIR:-"/var/ossec/etc"}
-OSSEC_LOG_DIR=${OSSEC_LOG_DIR:-"/var/ossec/logs"}
+
+if [ "$(uname)" = "Darwin" ]; then
+    OSSEC_WODLES_DIR=${OSSEC_WODLES_DIR:-"/Library/Ossec/wodles"}
+    OSSEC_CONF_DIR=${OSSEC_CONF_DIR:-"/Library/Ossec/etc"}
+    OSSEC_LOG_DIR=${OSSEC_LOG_DIR:-"/Library/Ossec/logs"}
+else
+    OSSEC_WODLES_DIR=${OSSEC_WODLES_DIR:-"/var/ossec/wodles"}
+    OSSEC_CONF_DIR=${OSSEC_CONF_DIR:-"/var/ossec/etc"}
+    OSSEC_LOG_DIR=${OSSEC_LOG_DIR:-"/var/ossec/logs"}
+fi
 OSSEC_USER=${OSSEC_USER:-"root"}
 OSSEC_GROUP=${OSSEC_GROUP:-"wazuh"}
 TRIVY_SCAN_SCRIPT_PATH=${TRIVY_SCAN_SCRIPT_PATH:-"$OSSEC_WODLES_DIR/trivy-scan.sh"}

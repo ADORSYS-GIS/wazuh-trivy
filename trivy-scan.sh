@@ -5,7 +5,12 @@
 TEMPLATE_FILE="/tmp/trivy-custom.tmpl"
 
 # Monitored log file for Wazuh
-LOG_FILE="/var/ossec/logs/trivy-scan.log"
+if [ "$(uname)" = "Darwin" ]; then
+    LOG_FILE="/Library/Ossec/logs/trivy-scan.log"
+else
+    LOG_FILE="/var/ossec/logs/trivy-scan.log"
+fi
+
 
 cleanup() {
     # Remove temporary file
