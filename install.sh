@@ -111,19 +111,19 @@ install_trivy() {
     fi
 }
 
-# Download and configure the trivy_scan.sh script
+# Download and configure the trivy-scan.sh script
 setup_trivy_scan_script() {
-    info_message "Downloading trivy_scan.sh script..."
+    info_message "Downloading trivy-scan.sh script..."
     if ! (maybe_sudo curl -SL -s "$TRIVY_SCAN_SCRIPT_URL" -o "$TRIVY_SCAN_SCRIPT_PATH"); then
-        error_message "Failed to download trivy_scan.sh script."
+        error_message "Failed to download trivy-scan.sh script."
         exit 1
     fi
 
-    info_message "Setting permissions for trivy_scan.sh..."
+    info_message "Setting permissions for trivy-scan.sh..."
     maybe_sudo chown "$OSSEC_USER:$OSSEC_GROUP" "$TRIVY_SCAN_SCRIPT_PATH"
     maybe_sudo chmod 750 "$TRIVY_SCAN_SCRIPT_PATH"
 
-    success_message "trivy_scan.sh script downloaded and configured successfully."
+    success_message "trivy-scan.sh script downloaded and configured successfully."
 }
 
 # Ensure the remote_commands configuration is present in local_internal_options.conf
