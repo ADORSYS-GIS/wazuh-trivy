@@ -81,7 +81,7 @@ maybe_sudo() {
     fi
 }
 
-# Check if a container engine (Docker or Podman) is installed
+# Check if a container engine (Docker or Podman or Containerd) is installed
 has_container_engine() {
     if command_exists docker || command_exists podman || command_exists ctr; then
         return 0
@@ -92,22 +92,29 @@ has_container_engine() {
 
 # Install Trivy if it doesn't exist
 install_trivy() {
-    if ! command_exists trivy; then
-        info_message "Trivy not found. Installing Trivy..."
-        if has_container_engine; then
-            # Use the official Trivy installation script
-            info_message "Downloading and installing Trivy ${TRIVY_VERSION}..."
-            if ! (maybe_sudo curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin "$TRIVY_VERSION"); then
-                error_message "Failed to install Trivy."
-                exit 1
-            fi
-            success_message "Trivy installed successfully."
+    local installed_version=""
+    if command_exists trivy; then
+        installed_version="$(trivy --version 2>/dev/null | awk '/Version:/ {print $2}')"
+        if [ "$installed_version" = "$TRIVY_VERSION" ]; then
+            info_message "Trivy $TRIVY_VERSION is already installed, skipping installation."
+            return
         else
-            error_message "No container engine (Docker or Podman or Containerd) found. Trivy requires a container engine to function."
-            exit 1
+            info_message "Trivy is installed but version $installed_version does not match required $TRIVY_VERSION. Installing correct version..."
         fi
     else
-        info_message "Trivy is already installed, skipping installation."
+        info_message "Trivy not found. Installing Trivy $TRIVY_VERSION..."
+    fi
+
+    if has_container_engine; then
+        info_message "Downloading and installing Trivy ${TRIVY_VERSION}..."
+        if ! (maybe_sudo curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/bin "$TRIVY_VERSION"); then
+            error_message "Failed to install Trivy."
+            exit 1
+        fi
+        success_message "Trivy $TRIVY_VERSION installed successfully."
+    else
+        error_message "No container engine (Docker or Podman or Containerd) found. Trivy requires a container engine to function."
+        exit 1
     fi
 }
 
