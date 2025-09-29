@@ -14,10 +14,12 @@ if [ "$(uname)" = "Darwin" ]; then
     OSSEC_WODLES_DIR=${OSSEC_WODLES_DIR:-"/Library/Ossec/wodles"}
     OSSEC_CONF_DIR=${OSSEC_CONF_DIR:-"/Library/Ossec/etc"}
     OSSEC_LOG_DIR=${OSSEC_LOG_DIR:-"/Library/Ossec/logs"}
+    TRIVY_BIN_DIR=${TRIVY_BIN_DIR:-"/usr/local/bin"}
 else
     OSSEC_WODLES_DIR=${OSSEC_WODLES_DIR:-"/var/ossec/wodles"}
     OSSEC_CONF_DIR=${OSSEC_CONF_DIR:-"/var/ossec/etc"}
     OSSEC_LOG_DIR=${OSSEC_LOG_DIR:-"/var/ossec/logs"}
+    TRIVY_BIN_DIR=${TRIVY_BIN_DIR:-"/usr/bin"}
 fi
 OSSEC_USER=${OSSEC_USER:-"root"}
 OSSEC_GROUP=${OSSEC_GROUP:-"wazuh"}
@@ -107,7 +109,7 @@ install_trivy() {
 
     if has_container_engine; then
         info_message "Downloading and installing Trivy ${TRIVY_VERSION}..."
-        if ! (maybe_sudo curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/bin "$TRIVY_VERSION"); then
+        if ! (maybe_sudo curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b "$TRIVY_BIN_DIR" "$TRIVY_VERSION"); then
             error_message "Failed to install Trivy."
             exit 1
         fi
