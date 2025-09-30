@@ -8,7 +8,7 @@ else
 fi
 
 LOG_LEVEL=${LOG_LEVEL:-"INFO"}
-TRIVY_VERSION=${TRIVY_VERSION:-"v0.60.0"}
+TRIVY_VERSION=${TRIVY_VERSION:-"0.60.0"}
 
 if [ "$(uname)" = "Darwin" ]; then
     OSSEC_WODLES_DIR=${OSSEC_WODLES_DIR:-"/Library/Ossec/wodles"}
@@ -109,7 +109,7 @@ install_trivy() {
 
     if has_container_engine; then
         info_message "Downloading and installing Trivy ${TRIVY_VERSION}..."
-        if ! (maybe_sudo curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b "$TRIVY_BIN_DIR" "$TRIVY_VERSION"); then
+        if ! (maybe_sudo curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b "$TRIVY_BIN_DIR" "v$TRIVY_VERSION"); then
             error_message "Failed to install Trivy."
             exit 1
         fi
