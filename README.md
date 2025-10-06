@@ -1,6 +1,6 @@
 # wazuh-trivy
 
-[![Test install.sh](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/test.yml)
+[![Test install.sh](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/test.yaml/badge.svg?branch=main)](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/test.yaml)
 
 Wazuh and Trivy integration to scan Docker image vulnerabilities.
 
@@ -9,7 +9,7 @@ Wazuh and Trivy integration to scan Docker image vulnerabilities.
 Use the install script to download and install Trivy and configure your wazuh-agent as it should.
 
 ```bash
-curl -SL --progress-bar https://raw.githubusercontent.com/ADORSYS-GIS/wazuh-trivy/refs/heads/main/install.sh | bash
+curl -SL --progress-bar https://raw.githubusercontent.com/ADORSYS-GIS/wazuh-trivy/refs/heads/main/install.sh | sudo bash
 ```
 
 Edit /var/ossec/etc/shared/**_your_linux_docker_group_**/agent.conf and add the remote command:
