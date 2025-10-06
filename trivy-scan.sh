@@ -54,7 +54,11 @@ if [ "$CONTAINER_ENGINE" == "docker" ]; then
 elif [ "$CONTAINER_ENGINE" == "podman" ]; then
     images=$(podman images --format "{{.Repository}}:{{.Tag}}")
 elif [ "$CONTAINER_ENGINE" == "containerd" ]; then
-    images=$(ctr -n k8s.io images list -q)
+    images=$(
+      sudo ctr namespaces list -q 2>/dev/null | while read -r ns; do
+        sudo ctr -n "$ns" images list -q 2>/dev/null
+      done | sort -u
+    )
 else
     echo "Unsupported container engine: $CONTAINER_ENGINE"
     exit 1
