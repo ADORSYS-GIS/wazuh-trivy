@@ -109,10 +109,23 @@ install_trivy() {
 
     if has_container_engine; then
         info_message "Downloading and installing Trivy ${TRIVY_VERSION}..."
-        if ! (maybe_sudo curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b "$TRIVY_BIN_DIR" "v$TRIVY_VERSION" < /dev/null); then
-            error_message "Failed to install Trivy."
+        
+        # Use a temporary file for the installer to ensure sudo applies to the execution
+        local TRIVY_TMP_SCRIPT="/tmp/trivy_install_$$.sh"
+        
+        if ! curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh -o "$TRIVY_TMP_SCRIPT"; then
+            error_message "Failed to download Trivy installation script."
+            rm -f "$TRIVY_TMP_SCRIPT"
             exit 1
         fi
+        
+        if ! (maybe_sudo sh "$TRIVY_TMP_SCRIPT" -b "$TRIVY_BIN_DIR" "v$TRIVY_VERSION" < /dev/null); then
+            error_message "Failed to install Trivy."
+            rm -f "$TRIVY_TMP_SCRIPT"
+            exit 1
+        fi
+        
+        rm -f "$TRIVY_TMP_SCRIPT"
         success_message "Trivy $TRIVY_VERSION installed successfully."
     else
         error_message "No container engine (Docker or Podman or Containerd) found. Trivy requires a container engine to function."
