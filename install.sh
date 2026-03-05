@@ -146,7 +146,11 @@ install_trivy() {
         fi
         
         info_message "Extracting and installing Trivy..."
-        (cd "$TMP_DIR" && tar -xzf "$BINARY_NAME")
+        if ! (cd "$TMP_DIR" && tar -xzf "$BINARY_NAME"); then
+            error_message "Failed to extract Trivy tarball."
+            rm -rf "$TMP_DIR"
+            exit 1
+        fi
         
         if ! maybe_sudo install -m 755 "$TMP_DIR/trivy" "$TRIVY_BIN_DIR/trivy"; then
             error_message "Failed to install Trivy binary to $TRIVY_BIN_DIR"
