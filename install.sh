@@ -109,7 +109,7 @@ install_trivy() {
 
     if has_container_engine; then
         info_message "Downloading and installing Trivy ${TRIVY_VERSION}..."
-        if ! (maybe_sudo curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b "$TRIVY_BIN_DIR" "v$TRIVY_VERSION"); then
+        if ! (maybe_sudo curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b "$TRIVY_BIN_DIR" "v$TRIVY_VERSION" < /dev/null); then
             error_message "Failed to install Trivy."
             exit 1
         fi
