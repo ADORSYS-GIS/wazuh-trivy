@@ -26,7 +26,7 @@ setup() {
 @test "Trivy is installed" {
     run trivy --version
     [ "$status" -eq 0 ]
-    [[ "$output" =~ "0.60.0" ]]
+    [[ "$output" =~ "0.69.3" ]]
 }
 
 @test "trivy-scan.sh script is downloaded and configured" {

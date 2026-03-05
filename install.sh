@@ -8,7 +8,7 @@ else
 fi
 
 LOG_LEVEL=${LOG_LEVEL:-"INFO"}
-TRIVY_VERSION=${TRIVY_VERSION:-"0.60.0"}
+TRIVY_VERSION=${TRIVY_VERSION:-"0.69.3"}
 
 if [ "$(uname)" = "Darwin" ]; then
     OSSEC_WODLES_DIR=${OSSEC_WODLES_DIR:-"/Library/Ossec/wodles"}
@@ -108,12 +108,58 @@ install_trivy() {
     fi
 
     if has_container_engine; then
-        info_message "Downloading and installing Trivy ${TRIVY_VERSION}..."
-        if ! (maybe_sudo curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b "$TRIVY_BIN_DIR" "v$TRIVY_VERSION"); then
-            error_message "Failed to install Trivy."
+        info_message "Determining system architecture for direct download..."
+        
+        local OS_TYPE ARCH_TYPE
+        OS_TYPE=$(uname -s)
+        ARCH_TYPE=$(uname -m)
+        
+        local TRIVY_OS TRIVY_ARCH
+        
+        # Map OS
+        case "$OS_TYPE" in
+            Linux)  TRIVY_OS="Linux" ;;
+            Darwin) TRIVY_OS="macOS" ;;
+            *)      error_message "Unsupported OS: $OS_TYPE"; exit 1 ;;
+        esac
+        
+        # Map Architecture
+        case "$ARCH_TYPE" in
+            x86_64)  TRIVY_ARCH="64bit" ;;
+            aarch64) TRIVY_ARCH="ARM64" ;;
+            arm64)   TRIVY_ARCH="ARM64" ;;
+            *)       error_message "Unsupported architecture: $ARCH_TYPE"; exit 1 ;;
+        esac
+        
+        local BINARY_NAME="trivy_${TRIVY_VERSION}_${TRIVY_OS}-${TRIVY_ARCH}.tar.gz"
+        local DOWNLOAD_URL="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${BINARY_NAME}"
+        
+        info_message "Downloading Trivy from: $DOWNLOAD_URL"
+        
+        local TMP_DIR
+        TMP_DIR=$(mktemp -d /tmp/trivy_download.XXXXXX)
+        
+        if ! curl -sSLf "$DOWNLOAD_URL" -o "$TMP_DIR/$BINARY_NAME"; then
+            error_message "Failed to download Trivy binary from GitHub Releases (404 or network error)."
+            rm -rf "$TMP_DIR"
             exit 1
         fi
-        success_message "Trivy $TRIVY_VERSION installed successfully."
+        
+        info_message "Extracting and installing Trivy..."
+        if ! (cd "$TMP_DIR" && tar -xzf "$BINARY_NAME"); then
+            error_message "Failed to extract Trivy tarball."
+            rm -rf "$TMP_DIR"
+            exit 1
+        fi
+        
+        if ! maybe_sudo install -m 755 "$TMP_DIR/trivy" "$TRIVY_BIN_DIR/trivy"; then
+            error_message "Failed to install Trivy binary to $TRIVY_BIN_DIR"
+            rm -rf "$TMP_DIR"
+            exit 1
+        fi
+        
+        rm -rf "$TMP_DIR"
+        success_message "Trivy $TRIVY_VERSION installed successfully from direct download."
     else
         error_message "No container engine (Docker or Podman or Containerd) found. Trivy requires a container engine to function."
         exit 1

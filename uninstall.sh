@@ -8,7 +8,7 @@ else
 fi
 
 LOG_LEVEL=${LOG_LEVEL:-"INFO"}
-TRIVY_VERSION=${TRIVY_VERSION:-"v0.60.0"}
+TRIVY_VERSION=${TRIVY_VERSION:-"v0.69.3"}
 
 if [ "$(uname)" = "Darwin" ]; then
     OSSEC_WODLES_DIR=${OSSEC_WODLES_DIR:-"/Library/Ossec/wodles"}
