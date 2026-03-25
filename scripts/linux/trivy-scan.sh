@@ -1,49 +1,80 @@
 #!/bin/bash
-# Linux-specific trivy scan logic
+# Copyright (C) 2025, ADORSYS GmbH & CO KG.
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../common.sh
-. "$SCRIPT_DIR/../common.sh"
-
-LOG_FILE="/var/ossec/logs/trivy-scan.log"
+# Directory to save the custom output template
 TEMPLATE_FILE="/tmp/trivy-custom.tmpl"
 
-run_scan() {
-    local CONTAINER_ENGINE
-    CONTAINER_ENGINE=$(detect_container_engine)
+# Monitored log file for Wazuh
+LOG_FILE="/var/ossec/logs/trivy-scan.log"
 
-    cat <<'EOL' > "$TEMPLATE_FILE"
+cleanup() {
+    # Remove temporary file
+    if [ -f "$TEMPLATE_FILE" ]; then
+        rm -f "$TEMPLATE_FILE"
+    fi
+}
+
+trap cleanup EXIT
+
+# Create the custom output template
+cat <<EOL > "$TEMPLATE_FILE"
 "Package","Version Installed","Vulnerability ID","Severity"
-{{- range $ri, $r := . }}
-{{- range $vi, $v := .Vulnerabilities }}
+{{- range \$ri, \$r := . }}
+{{- range \$vi, \$v := .Vulnerabilities }}
 "{{ $v.PkgName }}","{{$v.InstalledVersion }}","{{ $v.VulnerabilityID }}","{{$v.Severity}}"
 {{- end}}
 {{- end }}
 EOL
 
-    local images=""
-    if [ "$CONTAINER_ENGINE" = "docker" ]; then
-        images=$(docker images --format "{{.Repository}}:{{.Tag}}")
-    elif [ "$CONTAINER_ENGINE" = "podman" ]; then
-        images=$(podman images --format "{{.Repository}}:{{.Tag}}")
-    elif [ "$CONTAINER_ENGINE" = "containerd" ]; then
-        images=$(
-            sudo ctr namespaces list -q 2>/dev/null | while read -r ns; do
-                sudo ctr -n "$ns" images list -q 2>/dev/null
-            done | sort -u
-        )
-    fi
-
-    if [ -z "$images" ]; then
-        echo "Trivy: No images found. Exiting..." >> "$LOG_FILE"
+# Function to detect the available container engine
+detect_container_engine() {
+    if command -v docker &> /dev/null; then
+        echo "docker"
+    elif command -v podman &> /dev/null; then
+        echo "podman"
+    elif command -v ctr &> /dev/null; then
+        echo "containerd"
+    else
+        echo "No supported container engine found. Please install Docker, Podman, or containerd."
         exit 1
     fi
-
-    for image in $images; do
-        local trivy_output
-        trivy_output=$(trivy -q --scanners vuln i --format template --template "@$TEMPLATE_FILE" "$image")
-        while IFS= read -r line; do
-            echo "Trivy:\"$image\",$line" >> "$LOG_FILE"
-        done <<< "$trivy_output"
-    done
 }
+
+# Retrieve the container engine
+CONTAINER_ENGINE=$(detect_container_engine)
+
+# Retrieve list of container images
+if [ "$CONTAINER_ENGINE" == "docker" ]; then
+    images=$(docker images --format "{{.Repository}}:{{.Tag}}")
+elif [ "$CONTAINER_ENGINE" == "podman" ]; then
+    images=$(podman images --format "{{.Repository}}:{{.Tag}}")
+elif [ "$CONTAINER_ENGINE" == "containerd" ]; then
+    images=$(
+      sudo ctr namespaces list -q 2>/dev/null | while read -r ns; do
+        sudo ctr -n "$ns" images list -q 2>/dev/null
+      done | sort -u
+    )
+else
+    echo "Unsupported container engine: $CONTAINER_ENGINE"
+    exit 1
+fi
+
+if [ -z "$images" ]; then
+  echo "Trivy: No images found. Exiting..." >> "$LOG_FILE"
+  exit 1
+fi
+
+# Loop through each container image and run Trivy scan
+for image in $images; do
+    # Run Trivy scan on the current image using the custom output template
+    trivy_output=$(trivy -q --scanners vuln i --format template --template '@/tmp/trivy-custom.tmpl' $image)
+
+    # Process Trivy output for the current image
+    while IFS= read -r line; do
+        # Prepend image name with quotes and comma, and add timestamp
+        formatted_line="Trivy:\"$image\",$line"
+
+        # Write the formatted line to the monitored log file
+        echo "$formatted_line" >> "$LOG_FILE"
+    done <<< "$trivy_output"
+done
