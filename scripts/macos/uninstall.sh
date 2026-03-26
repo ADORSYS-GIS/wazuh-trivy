@@ -110,9 +110,7 @@ remove_remote_commands_config() {
     fi
 }
 
-run_uninstall() {
-    remove_trivy_binary
-    remove_trivy_scan_script
-    remove_trivy_log_file
-    remove_remote_commands_config
-}
+remove_trivy_binary
+remove_trivy_scan_script
+remove_trivy_log_file
+remove_remote_commands_config

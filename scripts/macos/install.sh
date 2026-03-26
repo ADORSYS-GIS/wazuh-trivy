@@ -14,10 +14,10 @@ TRIVY_BIN_DIR=${TRIVY_BIN_DIR:-"/usr/local/bin"}
 
 OSSEC_USER=${OSSEC_USER:-"root"}
 OSSEC_GROUP=${OSSEC_GROUP:-"wazuh"}
-TRIVY_VERSION=${TRIVY_VERSION:-"0.60.0"}
+TRIVY_VERSION=${TRIVY_VERSION:-"0.69.2"}
 TRIVY_SCAN_SCRIPT_PATH=${TRIVY_SCAN_SCRIPT_PATH:-"$OSSEC_WODLES_DIR/trivy-scan.sh"}
 TRIVY_SCAN_LOG_PATH=${TRIVY_SCAN_LOG_PATH:-"$OSSEC_LOG_DIR/trivy-scan.log"}
-TRIVY_SCAN_SCRIPT_URL=${TRIVY_SCAN_SCRIPT_URL:-"https://raw.githubusercontent.com/ADORSYS-GIS/wazuh-trivy/main/trivy-scan.sh"}
+TRIVY_SCAN_SCRIPT_URL=${TRIVY_SCAN_SCRIPT_URL:-"https://raw.githubusercontent.com/ADORSYS-GIS/wazuh-trivy/refs/heads/refactor/split-linux-macos-scripts/scripts/macos/trivy-scan.sh"}
 LOCAL_INTERNAL_OPTIONS_CONF=${LOCAL_INTERNAL_OPTIONS_CONF:-"$OSSEC_CONF_DIR/local_internal_options.conf"}
 REMOTE_COMMANDS_CONFIG=${REMOTE_COMMANDS_CONFIG:-"wazuh_command.remote_commands=1"}
 
@@ -137,14 +137,13 @@ create_trivy_log_file() {
     fi
 }
 
-run_install() {
-    if ! has_container_engine; then
-        error_message "No container engine (Docker, Podman, or containerd) detected. Trivy cannot be installed."
-        exit 1
-    fi
-    info_message "Container engine found. Proceeding with installation."
-    install_trivy
-    setup_trivy_scan_script
-    configure_remote_commands
-    create_trivy_log_file
-}
+if ! has_container_engine; then
+    error_message "No container engine (Docker, Podman, or containerd) detected. Trivy cannot be installed."
+    exit 1
+fi
+info_message "Container engine found. Proceeding with installation."
+install_trivy
+setup_trivy_scan_script
+configure_remote_commands
+create_trivy_log_file
+
