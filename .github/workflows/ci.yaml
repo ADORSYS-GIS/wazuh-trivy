@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: test
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: "0"
+      
+      - name: Install dependencies
+        run: |
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y bats curl jq sed
+          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            brew install bats coreutils curl jq gnu-sed docker
+          fi
+
+      - name: Install Wazuh agent
+        run: |
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            curl -sfL https://raw.githubusercontent.com/adorsys-gis/wazuh-agent/main/scripts/linux/install.sh | sudo WAZUH_AGENT_VERSION=4.14.2-1 WAZUH_MANAGER=127.0.0.1 bash
+          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            curl -sfL https://raw.githubusercontent.com/adorsys-gis/wazuh-agent/main/scripts/macos/install.sh | sudo WAZUH_AGENT_VERSION=4.14.2-1 WAZUH_MANAGER=127.0.0.1 bash
+          fi
+
+      - name: Install Trivy
+        run: |
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            sudo ./scripts/linux/install.sh
+          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            sudo ./scripts/macos/install.sh
+          fi
+
+      - name: Make script executable
+        run: |
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+             chmod +x ./scripts/linux/install.sh
+          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+             chmod +x ./scripts/macos/install.sh
+          fi
+
+      - name: Run Bats tests
+        run: sudo bats tests/
+
+      - name: Get the version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Generate script checksums
+        run: |
+          find scripts -type f -exec sha256sum {} + > checksums.sha256
+          cat checksums.sha256
+
+      - name: Generate full CHANGELOG.md
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --output CHANGELOG.md
+
+      - name: Create Pull Request to update CHANGELOG.md and checksums
+        uses: peter-evans/create-pull-request@v8
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          add-paths: |
+            CHANGELOG.md
+            checksums.sha256
+          commit-message: "chore: update CHANGELOG.md and checksums"
+          title: "Update Changelog and checksums"
+          body: |
+            This PR updates the CHANGELOG.md and checksums.
+            - Generated using git-cliff
+            - Triggered by: ${{ github.event_name }}
+          branch: update-changelog-${{ github.run_id }}
+          base: main
+          delete-branch: true
+          labels: documentation, automated-pr
+
+  release:
+    name: Release
+    permissions:
+      contents: write
+
+    runs-on: ubuntu-latest
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: "0"
+
+      - name: Get the version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes (latest only)
+        id: git_cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --latest --strip header
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          name: Release ${{ steps.get_version.outputs.VERSION }}
+          files: checksums.sha256
+          body: ${{ steps.git_cliff.outputs.content }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
