@@ -11,7 +11,7 @@ on:
       - main
 
 env:
-  WAZUH_TRIVY_REPO_REF: refs/heads/refactor/split-linux-macos-scripts
+  WAZUH_TRIVY_REPO_REF: refactor/split-linux-macos-scripts
 
 jobs:
   test:
