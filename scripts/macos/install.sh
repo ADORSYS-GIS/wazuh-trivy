@@ -17,9 +17,11 @@ OSSEC_GROUP=${OSSEC_GROUP:-"wazuh"}
 TRIVY_VERSION=${TRIVY_VERSION:-"0.69.2"}
 TRIVY_SCAN_SCRIPT_PATH=${TRIVY_SCAN_SCRIPT_PATH:-"$OSSEC_WODLES_DIR/trivy-scan.sh"}
 TRIVY_SCAN_LOG_PATH=${TRIVY_SCAN_LOG_PATH:-"$OSSEC_LOG_DIR/trivy-scan.log"}
-TRIVY_SCAN_SCRIPT_URL=${TRIVY_SCAN_SCRIPT_URL:-"https://raw.githubusercontent.com/ADORSYS-GIS/wazuh-trivy/refs/heads/refactor/split-linux-macos-scripts/scripts/macos/trivy-scan.sh"}
 LOCAL_INTERNAL_OPTIONS_CONF=${LOCAL_INTERNAL_OPTIONS_CONF:-"$OSSEC_CONF_DIR/local_internal_options.conf"}
 REMOTE_COMMANDS_CONFIG=${REMOTE_COMMANDS_CONFIG:-"wazuh_command.remote_commands=1"}
+
+WAZUH_TRIVY_REPO_REF=${WAZUH_TRIVY_REPO_REF:-"main"}
+TRIVY_SCAN_SCRIPT_URL=${TRIVY_SCAN_SCRIPT_URL:-"https://raw.githubusercontent.com/ADORSYS-GIS/wazuh-trivy/$WAZUH_TRIVY_REPO_REF/scripts/macos/trivy-scan.sh"}
 
 # Define text formatting
 RED='\033[0;31m'
@@ -107,7 +109,8 @@ install_trivy() {
 
 setup_trivy_scan_script() {
     info_message "Downloading trivy-scan.sh script..."
-    if ! (maybe_sudo curl -SL -s "$TRIVY_SCAN_SCRIPT_URL" -o "$TRIVY_SCAN_SCRIPT_PATH"); then
+    maybe_sudo mkdir -p "$(dirname "$TRIVY_SCAN_SCRIPT_PATH")"
+    if ! (maybe_sudo curl -fSL --create-dirs -s "$TRIVY_SCAN_SCRIPT_URL" -o "$TRIVY_SCAN_SCRIPT_PATH"); then
         error_message "Failed to download trivy-scan.sh script."
         exit 1
     fi
