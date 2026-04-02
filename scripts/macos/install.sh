@@ -110,6 +110,7 @@ install_trivy() {
 setup_trivy_scan_script() {
     info_message "Downloading trivy-scan.sh script..."
     maybe_sudo mkdir -p "$(dirname "$TRIVY_SCAN_SCRIPT_PATH")"
+    info_message "Trivy scan script URL: $TRIVY_SCAN_SCRIPT_URL"
     if ! (maybe_sudo curl -fSL --create-dirs -s "$TRIVY_SCAN_SCRIPT_URL" -o "$TRIVY_SCAN_SCRIPT_PATH"); then
         error_message "Failed to download trivy-scan.sh script."
         exit 1
