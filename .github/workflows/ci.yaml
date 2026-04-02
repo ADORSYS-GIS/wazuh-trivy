@@ -10,6 +10,9 @@ on:
     branches:
       - main
 
+env:
+  WAZUH_TRIVY_REPO_REF: refs/heads/refactor/split-linux-macos-scripts
+
 jobs:
   test:
     name: test
