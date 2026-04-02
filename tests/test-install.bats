@@ -8,12 +8,14 @@ setup() {
         export OSSEC_LOG_DIR="/Library/Ossec/logs"
         export STAT_USER_FORMAT="-f %Su"
         export STAT_GROUP_FORMAT="-f %Sg"
+        export INSTALL_SCRIPT="./scripts/macos/install.sh"
     else
         export OSSEC_WODLES_DIR="/var/ossec/wodles"
         export OSSEC_CONF_DIR="/var/ossec/etc"
         export OSSEC_LOG_DIR="/var/ossec/logs"
         export STAT_USER_FORMAT="-c %U"
         export STAT_GROUP_FORMAT="-c %G"
+        export INSTALL_SCRIPT="./scripts/linux/install.sh"
     fi
 
     export OSSEC_USER="root"
@@ -21,16 +23,17 @@ setup() {
     export TRIVY_SCAN_SCRIPT_PATH="$OSSEC_WODLES_DIR/trivy-scan.sh"
     export TRIVY_SCAN_LOG_PATH="$OSSEC_LOG_DIR/trivy-scan.log"
     export LOCAL_INTERNAL_OPTIONS_CONF="$OSSEC_CONF_DIR/local_internal_options.conf"
+    export WAZUH_TRIVY_REPO_REF="refactor/split-linux-macos-scripts"
 }
 
 @test "Trivy is installed" {
     run trivy --version
     [ "$status" -eq 0 ]
-    [[ "$output" =~ "0.60.0" ]]
+    [[ "$output" =~ "0.69.2" ]]
 }
 
 @test "trivy-scan.sh script is downloaded and configured" {
-    run ./install.sh
+    run $INSTALL_SCRIPT
     [ "$status" -eq 0 ]
     [ -f "$TRIVY_SCAN_SCRIPT_PATH" ]
     [ -x "$TRIVY_SCAN_SCRIPT_PATH" ]
@@ -39,13 +42,13 @@ setup() {
 }
 
 @test "remote_commands configuration is present in local_internal_options.conf" {
-    run ./install.sh
+    run $INSTALL_SCRIPT
     [ "$status" -eq 0 ]
     grep -q "wazuh_command.remote_commands=1" "$LOCAL_INTERNAL_OPTIONS_CONF"
 }
 
 @test "Trivy log file is created" {
-    run ./install.sh
+    run $INSTALL_SCRIPT
     [ "$status" -eq 0 ]
     [ -f "$TRIVY_SCAN_LOG_PATH" ]
     [ "$(sudo stat $STAT_USER_FORMAT "$TRIVY_SCAN_LOG_PATH")" = "$OSSEC_USER" ]
