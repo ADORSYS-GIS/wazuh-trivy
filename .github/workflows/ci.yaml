@@ -45,7 +45,7 @@ jobs:
 
       - name: Generate script checksums
         run: |
-          find scripts -type f -exec sha256sum {} + > checksums.sha256
+          find scripts -type f -exec sha256sum {} + | sort > checksums.sha256
           cat checksums.sha256
 
       - name: Generate full CHANGELOG.md
@@ -55,6 +55,7 @@ jobs:
           args: --output CHANGELOG.md
 
       - name: Commit and push changes
+        if: github.event_name == 'push'
         run: |
           if [[ -n $(git status --porcelain) ]]; then
             git add CHANGELOG.md checksums.sha256
@@ -138,7 +139,7 @@ jobs:
 
       - name: Generate script checksums
         run: |
-          find scripts -type f -exec sha256sum {} + >> checksums.sha256
+          find scripts -type f -exec sha256sum {} + | sort >> checksums.sha256
           cat checksums.sha256
 
       - name: Generate release notes (latest only)
