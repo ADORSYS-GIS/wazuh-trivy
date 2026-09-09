@@ -1,6 +1,7 @@
 # wazuh-trivy
 
 [![Test install.sh](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/test.yaml/badge.svg?branch=main)](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/test.yaml)
+[![SonarQube](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/sonarqube.yml/badge.svg)](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/sonarqube.yml)
 
 Wazuh and Trivy integration to scan Docker image vulnerabilities.
 
