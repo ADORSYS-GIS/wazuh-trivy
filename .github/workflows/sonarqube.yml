@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install Bats and Kcov
         run: |
@@ -34,7 +34,7 @@ jobs:
         run: ./tests/run-coverage.sh
 
       - name: Upload Coverage Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: trivy-coverage-report
           path: coverage/sonar-coverage.xml
@@ -43,7 +43,7 @@ jobs:
   scan:
     name: SonarQube Scan
     needs: test
-    uses: ADORSYS-GIS/adorsys-ci-cd-templates/.github/workflows/sonarqube.yml@8617a17cfc5f5a8897c2a3806bb543c20b4b57e0 # main
+    uses: ADORSYS-GIS/adorsys-ci-cd-templates/.github/workflows/sonarqube.yml@f8d1926a82c8d2bc2dca30e42d32d2674f817d19 # fix/sonarqube-fork-condition
     with:
       project-key: wazuh-trivy
       generic-coverage-report-paths: "coverage/sonar-coverage.xml"
