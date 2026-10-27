@@ -24,10 +24,23 @@ Describe what needs to be deployed or changed.
 
 How will this be rolled out and rolled back if needed?
 
+## Definition of Ready (DoR)
+
+- [ ] Target environment identified
+- [ ] Change is scoped
+- [ ] Rollout / rollback plan defined
+
 ## Acceptance Criteria
 
 - [ ] Criterion 1
 - [ ] Criterion 2
+
+## Definition of Done (DoD)
+
+- [ ] Deployed successfully
+- [ ] Verified in target environment
+- [ ] Rollback plan documented
+- [ ] Documentation updated if needed
 
 ## Additional Context
 
