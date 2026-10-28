@@ -19,9 +19,23 @@ What is being tested? (component, workflow, environment)
 - [ ] Test case 1
 - [ ] Test case 2
 
-## Expected Results
+## Definition of Ready (DoR)
 
-What should pass / what are the success criteria?
+- [ ] Scope is defined
+- [ ] Test plan is outlined
+- [ ] Test environment identified
+
+## Acceptance Criteria
+
+- [ ] All planned test cases executed
+- [ ] Results documented
+- [ ] Failures triaged
+
+## Definition of Done (DoD)
+
+- [ ] Test report produced
+- [ ] Blocking issues raised/tracked
+- [ ] Sign-off obtained
 
 ## Additional Context
 
