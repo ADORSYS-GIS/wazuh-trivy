@@ -1,343 +1,383 @@
 #!/usr/bin/env bats
 
 setup() {
-    TEST_DIR="$(mktemp -d)"
-    export TMP_DIR="$TEST_DIR"
-    
-    REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
-    # shellcheck source=scripts/shared/utils.sh
-    source "$REPO_ROOT/scripts/shared/utils.sh"
+    export REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
+    export TEST_DIR="$(mktemp -d)"
+    export MOCK_BIN="$TEST_DIR/bin"
+    export SYSBIN="$TEST_DIR/sysbin"
+    mkdir -p "$MOCK_BIN" "$SYSBIN"
+
+    # Link host standard utilities into SYSBIN
+    for cmd in chmod mkdir date uname id mktemp rm touch env sh bash cat sed awk grep sleep head tail cp mv tr dirname wc sha256sum shasum cut sort echo printf which [ basename tee; do
+        p="$(which "$cmd" 2>/dev/null || true)"
+        [ -n "$p" ] && ln -s "$p" "$SYSBIN/$cmd"
+    done
+
+    # Mock sudo: pass through arguments cleanly
+    cat << 'EOF' > "$MOCK_BIN/sudo"
+#!/bin/sh
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -*) shift ;;
+        *) break ;;
+    esac
+done
+exec "$@"
+EOF
+    chmod +x "$MOCK_BIN/sudo"
+
+    # Mock chown: no-op to allow non-root test runs
+    cat << 'EOF' > "$MOCK_BIN/chown"
+#!/bin/sh
+exit 0
+EOF
+    chmod +x "$MOCK_BIN/chown"
+
+    # Smart mock curl for local files and checksum generation
+    cat << 'EOF' > "$MOCK_BIN/curl"
+#!/bin/bash
+target_out=""
+url=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -o)
+            target_out="$2"
+            shift 2
+            ;;
+        http*)
+            url="$1"
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
+if [[ "$MOCK_CURL_FAIL" == "1" ]]; then
+    exit 1
+fi
+
+emit_content() {
+    if [[ "$url" == *"checksums.sha256"* ]]; then
+        if [[ "$MOCK_CORRUPT_CHECKSUM" == "1" ]]; then
+            echo "deadbeefdeadbeef  scripts/shared/utils.sh"
+            echo "deadbeefdeadbeef  scripts/linux/trivy-scan.sh"
+            echo "deadbeefdeadbeef  scripts/macos/trivy-scan.sh"
+        else
+            for p in scripts/shared/utils.sh scripts/linux/trivy-scan.sh scripts/macos/trivy-scan.sh scripts/linux/install.sh scripts/linux/uninstall.sh; do
+                if [ -f "$REPO_ROOT/$p" ]; then
+                    h=$(sha256sum "$REPO_ROOT/$p" | awk '{print $1}')
+                    echo "$h  $p"
+                fi
+            done
+        fi
+    elif [[ "$url" == *"scripts/shared/utils.sh"* ]]; then
+        cat "$REPO_ROOT/scripts/shared/utils.sh"
+    elif [[ "$url" == *"scripts/macos/trivy-scan.sh"* ]]; then
+        cat "$REPO_ROOT/scripts/macos/trivy-scan.sh"
+    elif [[ "$url" == *"scripts/linux/trivy-scan.sh"* || "$url" == *"trivy-scan.sh"* ]]; then
+        cat "$REPO_ROOT/scripts/linux/trivy-scan.sh"
+    elif [[ "$url" == *"aquasecurity/trivy"* ]]; then
+        echo "#!/bin/sh"
+        echo "echo 'mock trivy installer executed'"
+    else
+        echo "mock download content"
+    fi
+}
+
+if [[ -n "$target_out" ]]; then
+    emit_content > "$target_out"
+else
+    emit_content
+fi
+exit 0
+EOF
+    chmod +x "$MOCK_BIN/curl"
+
+    # Mock docker
+    cat << 'EOF' > "$MOCK_BIN/docker"
+#!/bin/bash
+if [[ "$MOCK_DOCKER_FAIL" == "1" ]]; then
+    exit 1
+fi
+if [[ "$1" == "images" ]]; then
+    if [[ "$MOCK_NO_IMAGES" == "1" ]]; then
+        exit 0
+    fi
+    echo "alpine:latest"
+    echo "nginx:1.25"
+    exit 0
+fi
+exit 0
+EOF
+    chmod +x "$MOCK_BIN/docker"
+
+    # Mock trivy
+    cat << 'EOF' > "$MOCK_BIN/trivy"
+#!/bin/bash
+if [[ "$1" == "--version" ]]; then
+    echo "Version: ${MOCK_TRIVY_VERSION:-0.69.2}"
+    exit 0
+fi
+echo '"Package","Version Installed","Vulnerability ID","Severity"'
+echo '"openssl","1.1.1","CVE-2023-0001","HIGH"'
+exit 0
+EOF
+    chmod +x "$MOCK_BIN/trivy"
+
+    # Set up isolated directories
+    export OSSEC_WODLES_DIR="$TEST_DIR/wodles"
+    export OSSEC_CONF_DIR="$TEST_DIR/etc"
+    export OSSEC_LOG_DIR="$TEST_DIR/logs"
+    export TRIVY_BIN_DIR="$TEST_DIR/bin"
+    export OSSEC_USER="$(id -un)"
+    export OSSEC_GROUP="$(id -gn)"
+    export LOCAL_INTERNAL_OPTIONS_CONF="$OSSEC_CONF_DIR/local_internal_options.conf"
+    export TRIVY_SCAN_SCRIPT_PATH="$OSSEC_WODLES_DIR/trivy-scan.sh"
+    export TRIVY_SCAN_LOG_PATH="$OSSEC_LOG_DIR/trivy-scan.log"
+    export LOG_FILE="$TRIVY_SCAN_LOG_PATH"
+    export TEMPLATE_FILE="$TEST_DIR/trivy-custom.tmpl"
+    export WAZUH_TRIVY_REPO_REF="main"
+    export WAZUH_TRIVY_REPO_URL="https://raw.githubusercontent.com/ADORSYS-GIS/wazuh-trivy/$WAZUH_TRIVY_REPO_REF"
+
+    mkdir -p "$OSSEC_WODLES_DIR" "$OSSEC_CONF_DIR" "$OSSEC_LOG_DIR" "$TRIVY_BIN_DIR"
+    touch "$LOCAL_INTERNAL_OPTIONS_CONF"
+
+    export ORIGINAL_PATH="$PATH"
+    export PATH="$MOCK_BIN:$SYSBIN"
 }
 
 teardown() {
+    export PATH="$ORIGINAL_PATH"
     rm -rf "$TEST_DIR"
 }
 
-# --- Tests for scripts/linux/uninstall.sh helpers ---
+# =============================================================================
+# scripts/linux/install.sh tests
+# =============================================================================
 
-@test "sed_alternative uses sed or gsed" {
-    maybe_sudo() {
-        "$@"
-    }
-    local test_file="$TEST_DIR/sed_test.txt"
-    echo "foo=1" > "$test_file"
-    
-    sed_alternative() {
-        if command_exists gsed; then
-            maybe_sudo gsed "$@"
-        else
-            maybe_sudo sed "$@"
-        fi
-    }
-    
-    sed_alternative -i 's/foo=1/foo=2/' "$test_file"
-    [ "$(cat "$test_file")" = "foo=2" ]
-}
-
-@test "remove_remote_commands_config removes config when present" {
-    maybe_sudo() {
-        "$@"
-    }
-    local conf_file="$TEST_DIR/local_internal_options.conf"
-    echo "some_other_config=yes" > "$conf_file"
-    echo "wazuh_command.remote_commands=1" >> "$conf_file"
-    
-    export LOCAL_INTERNAL_OPTIONS_CONF="$conf_file"
-    export REMOTE_COMMANDS_CONFIG="wazuh_command.remote_commands=1"
-    
-    sed_alternative() {
-        sed "$@"
-    }
-    
-    remove_remote_commands_config() {
-        if [ -f "$LOCAL_INTERNAL_OPTIONS_CONF" ]; then
-            if grep -q "^$REMOTE_COMMANDS_CONFIG" "$LOCAL_INTERNAL_OPTIONS_CONF"; then
-                info_message "Removing remote_commands config from $LOCAL_INTERNAL_OPTIONS_CONF..."
-                sed_alternative -i.bak "/^$REMOTE_COMMANDS_CONFIG/d" "$LOCAL_INTERNAL_OPTIONS_CONF"
-                success_message "Remote commands configuration removed."
-                info_message "Backup created at $LOCAL_INTERNAL_OPTIONS_CONF.bak"
-            else
-                info_message "Remote commands config not found, skipping."
-            fi
-        else
-            warn_message "$LOCAL_INTERNAL_OPTIONS_CONF not found, skipping."
-        fi
-    }
-    
-    run remove_remote_commands_config
+@test "scripts/linux/install.sh: executes successfully and installs all components" {
+    run bash "$REPO_ROOT/scripts/linux/install.sh"
     [ "$status" -eq 0 ]
-    [[ "$output" =~ "Remote commands configuration removed" ]]
-    ! grep -q "wazuh_command.remote_commands=1" "$conf_file"
+    [ -f "$TRIVY_SCAN_SCRIPT_PATH" ]
+    [ -x "$TRIVY_SCAN_SCRIPT_PATH" ]
+    [ -f "$TRIVY_SCAN_LOG_PATH" ]
+    grep -q "wazuh_command.remote_commands=1" "$LOCAL_INTERNAL_OPTIONS_CONF"
+    [[ "$output" =~ "Container engine found" ]]
+    [[ "$output" =~ "already installed, skipping installation" ]]
+    [[ "$output" =~ "trivy-scan.sh downloaded and configured" ]]
 }
 
-@test "remove_remote_commands_config skips when config is not in file" {
-    local conf_file="$TEST_DIR/clean.conf"
-    echo "unrelated=true" > "$conf_file"
-    export LOCAL_INTERNAL_OPTIONS_CONF="$conf_file"
-    export REMOTE_COMMANDS_CONFIG="wazuh_command.remote_commands=1"
-    
-    remove_remote_commands_config() {
-        if [ -f "$LOCAL_INTERNAL_OPTIONS_CONF" ]; then
-            if grep -q "^$REMOTE_COMMANDS_CONFIG" "$LOCAL_INTERNAL_OPTIONS_CONF"; then
-                info_message "Removing remote_commands config..."
-            else
-                info_message "Remote commands config not found, skipping."
-            fi
-        else
-            warn_message "$LOCAL_INTERNAL_OPTIONS_CONF not found, skipping."
-        fi
-    }
-    
-    run remove_remote_commands_config
+@test "scripts/linux/install.sh: reinstalls trivy when version does not match" {
+    export MOCK_TRIVY_VERSION="0.50.0"
+    run bash "$REPO_ROOT/scripts/linux/install.sh"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "found but 0.69.2 required. Reinstalling..." ]]
+    [[ "$output" =~ "Trivy 0.69.2 installed successfully" ]]
+}
+
+@test "scripts/linux/install.sh: installs trivy when binary is not found" {
+    rm -f "$MOCK_BIN/trivy"
+    run bash "$REPO_ROOT/scripts/linux/install.sh"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "Trivy not found. Installing Trivy 0.69.2..." ]]
+    [[ "$output" =~ "Trivy 0.69.2 installed successfully" ]]
+}
+
+@test "scripts/linux/install.sh: fails when no container engine is available" {
+    rm -f "$MOCK_BIN/docker"
+    run bash "$REPO_ROOT/scripts/linux/install.sh"
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "No container engine (Docker, Podman, or containerd) detected" ]]
+}
+
+@test "scripts/linux/install.sh: aborts on utils checksum mismatch" {
+    export MOCK_CORRUPT_CHECKSUM="1"
+    run bash "$REPO_ROOT/scripts/linux/install.sh"
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "Checksum verification failed for utils.sh" ]]
+}
+
+@test "scripts/linux/install.sh: idempotency preserves existing configuration" {
+    # First install
+    run bash "$REPO_ROOT/scripts/linux/install.sh"
+    [ "$status" -eq 0 ]
+
+    # Second install
+    run bash "$REPO_ROOT/scripts/linux/install.sh"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "Remote commands configuration already present" ]]
+    [[ "$output" =~ "Trivy log file already exists, skipping" ]]
+}
+
+# =============================================================================
+# scripts/linux/uninstall.sh tests
+# =============================================================================
+
+@test "scripts/linux/uninstall.sh: removes trivy files and config cleanly" {
+    # Create target files
+    touch "$TRIVY_SCAN_SCRIPT_PATH" "$TRIVY_SCAN_LOG_PATH" "$TRIVY_BIN_DIR/trivy"
+    echo "other_option=true" > "$LOCAL_INTERNAL_OPTIONS_CONF"
+    echo "wazuh_command.remote_commands=1" >> "$LOCAL_INTERNAL_OPTIONS_CONF"
+
+    run bash "$REPO_ROOT/scripts/linux/uninstall.sh"
+    [ "$status" -eq 0 ]
+    [ ! -f "$TRIVY_SCAN_SCRIPT_PATH" ]
+    [ ! -f "$TRIVY_SCAN_LOG_PATH" ]
+    [ ! -f "$TRIVY_BIN_DIR/trivy" ]
+    ! grep -q "wazuh_command.remote_commands=1" "$LOCAL_INTERNAL_OPTIONS_CONF"
+    grep -q "other_option=true" "$LOCAL_INTERNAL_OPTIONS_CONF"
+    [ -f "$LOCAL_INTERNAL_OPTIONS_CONF.bak" ]
+    [[ "$output" =~ "Remote commands configuration removed" ]]
+}
+
+@test "scripts/linux/uninstall.sh: skips config removal when not present" {
+    echo "other_option=true" > "$LOCAL_INTERNAL_OPTIONS_CONF"
+    run bash "$REPO_ROOT/scripts/linux/uninstall.sh"
     [ "$status" -eq 0 ]
     [[ "$output" =~ "Remote commands config not found, skipping" ]]
 }
 
-@test "remove_remote_commands_config skips when file does not exist" {
-    export LOCAL_INTERNAL_OPTIONS_CONF="$TEST_DIR/nonexistent.conf"
-    export REMOTE_COMMANDS_CONFIG="wazuh_command.remote_commands=1"
-    
-    remove_remote_commands_config() {
-        if [ -f "$LOCAL_INTERNAL_OPTIONS_CONF" ]; then
-            info_message "Found file"
-        else
-            warn_message "$LOCAL_INTERNAL_OPTIONS_CONF not found, skipping."
-        fi
-    }
-    
-    run remove_remote_commands_config
+@test "scripts/linux/uninstall.sh: skips config removal when file does not exist" {
+    rm -f "$LOCAL_INTERNAL_OPTIONS_CONF"
+    run bash "$REPO_ROOT/scripts/linux/uninstall.sh"
     [ "$status" -eq 0 ]
     [[ "$output" =~ "not found, skipping" ]]
 }
 
-@test "remove_trivy_files deletes scan script, log, and binary" {
-    local scan_script="$TEST_DIR/trivy-scan.sh"
-    local scan_log="$TEST_DIR/trivy-scan.log"
-    local bin_file="$TEST_DIR/trivy"
-    
-    touch "$scan_script" "$scan_log" "$bin_file"
-    
-    export TRIVY_SCAN_SCRIPT_PATH="$scan_script"
-    export TRIVY_SCAN_LOG_PATH="$scan_log"
-    export TRIVY_BIN_DIR="$TEST_DIR"
-    
-    maybe_sudo() {
-        "$@"
-    }
-    
-    remove_trivy_files() {
-        remove_file "$TRIVY_SCAN_SCRIPT_PATH"
-        remove_file "$TRIVY_SCAN_LOG_PATH"
-        remove_file "$TRIVY_BIN_DIR/trivy"
-    }
-    
-    run remove_trivy_files
-    [ "$status" -eq 0 ]
-    [ ! -f "$scan_script" ]
-    [ ! -f "$scan_log" ]
-    [ ! -f "$bin_file" ]
-}
-
-# --- Tests for scripts/linux/install.sh helpers ---
-
-@test "has_container_engine succeeds when docker, podman, or ctr is present" {
-    has_container_engine() {
-        if command_exists docker || command_exists podman || command_exists ctr; then
-            return 0
-        else
-            return 1
-        fi
-    }
-    
-    command_exists() {
-        if [[ "$1" == "docker" ]]; then
-            return 0
-        fi
-        return 1
-    }
-    run has_container_engine
-    [ "$status" -eq 0 ]
-    
-    command_exists() {
-        if [[ "$1" == "podman" ]]; then
-            return 0
-        fi
-        return 1
-    }
-    run has_container_engine
-    [ "$status" -eq 0 ]
-    
-    command_exists() {
-        if [[ "$1" == "ctr" ]]; then
-            return 0
-        fi
-        return 1
-    }
-    run has_container_engine
-    [ "$status" -eq 0 ]
-}
-
-@test "has_container_engine fails when none are present" {
-    has_container_engine() {
-        if command_exists docker || command_exists podman || command_exists ctr; then
-            return 0
-        else
-            return 1
-        fi
-    }
-    command_exists() {
-        return 1
-    }
-    run has_container_engine
+@test "scripts/linux/uninstall.sh: aborts on utils checksum mismatch" {
+    export MOCK_CORRUPT_CHECKSUM="1"
+    run bash "$REPO_ROOT/scripts/linux/uninstall.sh"
     [ "$status" -eq 1 ]
+    [[ "$output" =~ "Checksum verification failed for utils.sh" ]]
 }
 
-@test "install_trivy skips installation when matching version already installed" {
-    export TRIVY_VERSION="0.69.2"
-    
-    command_exists() {
-        if [[ "$1" == "trivy" ]]; then
-            return 0
-        fi
-        return 1
-    }
-    trivy() {
-        echo "Version: 0.69.2"
-    }
-    
-    install_trivy() {
-        local installed_version=""
-        if command_exists trivy; then
-            installed_version="$(trivy --version 2>/dev/null | awk '/Version:/ {print $2}')"
-            if [ "$installed_version" = "$TRIVY_VERSION" ]; then
-                info_message "Trivy $TRIVY_VERSION is already installed, skipping installation."
-                return 0
-            fi
-        fi
-        return 1
-    }
-    
-    run install_trivy
+# =============================================================================
+# scripts/linux/trivy-scan.sh tests
+# =============================================================================
+
+@test "scripts/linux/trivy-scan.sh: scans docker images and logs results" {
+    run bash "$REPO_ROOT/scripts/linux/trivy-scan.sh"
     [ "$status" -eq 0 ]
-    [[ "$output" =~ "already installed, skipping installation" ]]
+    [ -f "$TRIVY_SCAN_LOG_PATH" ]
+    grep -q 'Trivy:"alpine:latest"' "$TRIVY_SCAN_LOG_PATH"
+    grep -q 'CVE-2023-0001' "$TRIVY_SCAN_LOG_PATH"
 }
 
-@test "configure_remote_commands appends config when absent" {
-    local conf_file="$TEST_DIR/local_internal_options.conf"
-    touch "$conf_file"
-    
-    export LOCAL_INTERNAL_OPTIONS_CONF="$conf_file"
-    export REMOTE_COMMANDS_CONFIG="wazuh_command.remote_commands=1"
-    
-    maybe_sudo() {
-        "$@"
-    }
-    
-    configure_remote_commands() {
-        info_message "Checking remote_commands config in $LOCAL_INTERNAL_OPTIONS_CONF..."
-        if ! maybe_sudo grep -q "^$REMOTE_COMMANDS_CONFIG" "$LOCAL_INTERNAL_OPTIONS_CONF"; then
-            echo "$REMOTE_COMMANDS_CONFIG" | maybe_sudo tee -a "$LOCAL_INTERNAL_OPTIONS_CONF" > /dev/null
-            success_message "Remote commands configuration added."
-        else
-            info_message "Remote commands configuration already present."
-        fi
-    }
-    
-    run configure_remote_commands
+@test "scripts/linux/trivy-scan.sh: works with podman engine" {
+    rm -f "$MOCK_BIN/docker"
+    cat << 'EOF' > "$MOCK_BIN/podman"
+#!/bin/bash
+if [[ "$1" == "images" ]]; then
+    echo "fedora:latest"
+    exit 0
+fi
+exit 0
+EOF
+    chmod +x "$MOCK_BIN/podman"
+
+    run bash "$REPO_ROOT/scripts/linux/trivy-scan.sh"
     [ "$status" -eq 0 ]
-    [[ "$output" =~ "Remote commands configuration added" ]]
-    grep -q "wazuh_command.remote_commands=1" "$conf_file"
-    
-    # Run again: should see already present
-    run configure_remote_commands
-    [ "$status" -eq 0 ]
-    [[ "$output" =~ "Remote commands configuration already present" ]]
+    grep -q 'Trivy:"fedora:latest"' "$TRIVY_SCAN_LOG_PATH"
 }
 
-@test "create_trivy_log_file creates log file with permissions" {
-    local log_file="$TEST_DIR/logs/trivy-scan.log"
-    export TRIVY_SCAN_LOG_PATH="$log_file"
-    export OSSEC_USER="root"
-    export OSSEC_GROUP="wazuh"
-    
-    maybe_sudo() {
-        local cmd="$1"
-        shift
-        if [[ "$cmd" == "chown" ]]; then
-            return 0
-        fi
-        "$cmd" "$@"
-    }
-    
-    create_trivy_log_file() {
-        if [ ! -f "$TRIVY_SCAN_LOG_PATH" ]; then
-            info_message "Creating trivy log file..."
-            maybe_sudo mkdir -p "$(dirname "$TRIVY_SCAN_LOG_PATH")"
-            maybe_sudo touch "$TRIVY_SCAN_LOG_PATH"
-            maybe_sudo chown "$OSSEC_USER:$OSSEC_GROUP" "$TRIVY_SCAN_LOG_PATH"
-            success_message "Trivy log file created."
-        else
-            info_message "Trivy log file already exists, skipping."
-        fi
-    }
-    
-    run create_trivy_log_file
+@test "scripts/linux/trivy-scan.sh: works with containerd ctr engine" {
+    rm -f "$MOCK_BIN/docker"
+    cat << 'EOF' > "$MOCK_BIN/ctr"
+#!/bin/bash
+if [[ "$1" == "namespaces" ]]; then
+    echo "k8s.io"
+    exit 0
+fi
+if [[ "$1" == "-n" && "$3" == "images" ]]; then
+    echo "docker.io/library/busybox:latest"
+    exit 0
+fi
+exit 0
+EOF
+    chmod +x "$MOCK_BIN/ctr"
+
+    run bash "$REPO_ROOT/scripts/linux/trivy-scan.sh"
     [ "$status" -eq 0 ]
-    [ -f "$log_file" ]
-    [[ "$output" =~ "Trivy log file created" ]]
-    
-    # Run again: should skip
-    run create_trivy_log_file
-    [ "$status" -eq 0 ]
-    [[ "$output" =~ "already exists, skipping" ]]
+    grep -q 'Trivy:"docker.io/library/busybox:latest"' "$TRIVY_SCAN_LOG_PATH"
 }
 
-# --- Tests for scripts/linux/trivy-scan.sh helpers ---
-
-@test "detect_container_engine detects docker, podman, and containerd" {
-    detect_container_engine() {
-        if command -v docker &> /dev/null; then
-            echo "docker"
-        elif command -v podman &> /dev/null; then
-            echo "podman"
-        elif command -v ctr &> /dev/null; then
-            echo "containerd"
-        else
-            echo "No supported container engine found."
-            return 1
-        fi
-    }
-    
-    local active_engine=""
-    command() {
-        if [[ "$1" == "-v" ]]; then
-            [[ "$2" == "$active_engine" ]] && return 0
-            return 1
-        fi
-        builtin command "$@"
-    }
-    
-    # Docker
-    active_engine="docker"
-    run detect_container_engine
-    [ "$status" -eq 0 ]
-    [ "$output" = "docker" ]
-    
-    # Podman
-    active_engine="podman"
-    run detect_container_engine
-    [ "$status" -eq 0 ]
-    [ "$output" = "podman" ]
-    
-    # Containerd
-    active_engine="ctr"
-    run detect_container_engine
-    [ "$status" -eq 0 ]
-    [ "$output" = "containerd" ]
-    
-    # None
-    active_engine="none"
-    run detect_container_engine
+@test "scripts/linux/trivy-scan.sh: exits when no container engine detected" {
+    rm -f "$MOCK_BIN/docker" "$MOCK_BIN/podman" "$MOCK_BIN/ctr"
+    run bash "$REPO_ROOT/scripts/linux/trivy-scan.sh"
     [ "$status" -eq 1 ]
     [[ "$output" =~ "No supported container engine found" ]]
 }
+
+@test "scripts/linux/trivy-scan.sh: logs and exits when no images found" {
+    export MOCK_NO_IMAGES="1"
+    run bash "$REPO_ROOT/scripts/linux/trivy-scan.sh"
+    [ "$status" -eq 1 ]
+    grep -q "Trivy: No images found. Exiting..." "$TRIVY_SCAN_LOG_PATH"
+}
+
+# =============================================================================
+# macOS guard tests
+# =============================================================================
+
+@test "scripts/macos/install.sh: aborts on non-macOS system" {
+    run bash "$REPO_ROOT/scripts/macos/install.sh"
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "intended for macOS systems" ]]
+}
+
+@test "scripts/macos/uninstall.sh: aborts on non-macOS system" {
+    run bash "$REPO_ROOT/scripts/macos/uninstall.sh"
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "intended for macOS systems" ]]
+}
+
+# =============================================================================
+# macOS execution tests (with Darwin OS mock)
+# =============================================================================
+
+mock_darwin() {
+    cat << 'EOF' > "$MOCK_BIN/uname"
+#!/bin/sh
+if [ "$1" = "-s" ] || [ "$1" = "" ]; then
+    echo "Darwin"
+    exit 0
+fi
+builtin uname "$@"
+EOF
+    chmod +x "$MOCK_BIN/uname"
+}
+
+@test "scripts/macos/install.sh: executes successfully under Darwin" {
+    mock_darwin
+    run bash "$REPO_ROOT/scripts/macos/install.sh"
+    [ "$status" -eq 0 ]
+    [ -f "$TRIVY_SCAN_SCRIPT_PATH" ]
+    [ -x "$TRIVY_SCAN_SCRIPT_PATH" ]
+    [ -f "$TRIVY_SCAN_LOG_PATH" ]
+    grep -q "wazuh_command.remote_commands=1" "$LOCAL_INTERNAL_OPTIONS_CONF"
+    [[ "$output" =~ "Container engine found" ]]
+    [[ "$output" =~ "trivy-scan.sh downloaded and configured" ]]
+}
+
+@test "scripts/macos/uninstall.sh: removes trivy files and config under Darwin" {
+    mock_darwin
+    touch "$TRIVY_SCAN_SCRIPT_PATH" "$TRIVY_SCAN_LOG_PATH" "$TRIVY_BIN_DIR/trivy"
+    echo "wazuh_command.remote_commands=1" >> "$LOCAL_INTERNAL_OPTIONS_CONF"
+
+    run bash "$REPO_ROOT/scripts/macos/uninstall.sh"
+    [ "$status" -eq 0 ]
+    [ ! -f "$TRIVY_SCAN_SCRIPT_PATH" ]
+    [ ! -f "$TRIVY_SCAN_LOG_PATH" ]
+    [ ! -f "$TRIVY_BIN_DIR/trivy" ]
+    ! grep -q "wazuh_command.remote_commands=1" "$LOCAL_INTERNAL_OPTIONS_CONF"
+}
+
+@test "scripts/macos/trivy-scan.sh: scans docker images and logs results" {
+    run bash "$REPO_ROOT/scripts/macos/trivy-scan.sh"
+    [ "$status" -eq 0 ]
+    [ -f "$TRIVY_SCAN_LOG_PATH" ]
+    grep -q 'Trivy:"alpine:latest"' "$TRIVY_SCAN_LOG_PATH"
+}
+
