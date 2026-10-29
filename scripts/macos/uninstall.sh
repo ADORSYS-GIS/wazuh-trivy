@@ -94,7 +94,7 @@ remove_remote_commands_config() {
             info_message "Remote commands config not found, skipping."
         fi
     else
-        warning_message "$LOCAL_INTERNAL_OPTIONS_CONF not found, skipping."
+        warn_message "$LOCAL_INTERNAL_OPTIONS_CONF not found, skipping."
     fi
 }
 
