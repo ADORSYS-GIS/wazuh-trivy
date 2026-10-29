@@ -33,6 +33,21 @@ exit 0
 EOF
     chmod +x "$MOCK_BIN/chown"
 
+    # Mock uname: default to Linux unless overridden by MOCK_UNAME_S
+    cat << 'EOF' > "$MOCK_BIN/uname"
+#!/bin/sh
+case "$1" in
+    -s|"")
+        echo "${MOCK_UNAME_S:-Linux}"
+        ;;
+    *)
+        command uname "$@"
+        ;;
+esac
+exit 0
+EOF
+    chmod +x "$MOCK_BIN/uname"
+
     # Smart mock curl for local files and checksum generation
     cat << 'EOF' > "$MOCK_BIN/curl"
 #!/bin/bash
@@ -318,16 +333,32 @@ EOF
 }
 
 # =============================================================================
-# macOS guard tests
+# OS guard tests
 # =============================================================================
 
+@test "scripts/linux/install.sh: aborts on non-Linux system" {
+    export MOCK_UNAME_S="Darwin"
+    run bash "$REPO_ROOT/scripts/linux/install.sh"
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "intended for Linux systems" ]]
+}
+
+@test "scripts/linux/uninstall.sh: aborts on non-Linux system" {
+    export MOCK_UNAME_S="Darwin"
+    run bash "$REPO_ROOT/scripts/linux/uninstall.sh"
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "intended for Linux systems" ]]
+}
+
 @test "scripts/macos/install.sh: aborts on non-macOS system" {
+    export MOCK_UNAME_S="Linux"
     run bash "$REPO_ROOT/scripts/macos/install.sh"
     [ "$status" -eq 1 ]
     [[ "$output" =~ "intended for macOS systems" ]]
 }
 
 @test "scripts/macos/uninstall.sh: aborts on non-macOS system" {
+    export MOCK_UNAME_S="Linux"
     run bash "$REPO_ROOT/scripts/macos/uninstall.sh"
     [ "$status" -eq 1 ]
     [[ "$output" =~ "intended for macOS systems" ]]
@@ -337,20 +368,8 @@ EOF
 # macOS execution tests (with Darwin OS mock)
 # =============================================================================
 
-mock_darwin() {
-    cat << 'EOF' > "$MOCK_BIN/uname"
-#!/bin/sh
-if [ "$1" = "-s" ] || [ "$1" = "" ]; then
-    echo "Darwin"
-    exit 0
-fi
-builtin uname "$@"
-EOF
-    chmod +x "$MOCK_BIN/uname"
-}
-
 @test "scripts/macos/install.sh: executes successfully under Darwin" {
-    mock_darwin
+    export MOCK_UNAME_S="Darwin"
     run bash "$REPO_ROOT/scripts/macos/install.sh"
     [ "$status" -eq 0 ]
     [ -f "$TRIVY_SCAN_SCRIPT_PATH" ]
@@ -362,7 +381,7 @@ EOF
 }
 
 @test "scripts/macos/uninstall.sh: removes trivy files and config under Darwin" {
-    mock_darwin
+    export MOCK_UNAME_S="Darwin"
     touch "$TRIVY_SCAN_SCRIPT_PATH" "$TRIVY_SCAN_LOG_PATH" "$TRIVY_BIN_DIR/trivy"
     echo "wazuh_command.remote_commands=1" >> "$LOCAL_INTERNAL_OPTIONS_CONF"
 
@@ -375,6 +394,7 @@ EOF
 }
 
 @test "scripts/macos/trivy-scan.sh: scans docker images and logs results" {
+    export MOCK_UNAME_S="Darwin"
     run bash "$REPO_ROOT/scripts/macos/trivy-scan.sh"
     [ "$status" -eq 0 ]
     [ -f "$TRIVY_SCAN_LOG_PATH" ]
