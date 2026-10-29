@@ -33,10 +33,6 @@ warn_message() {
     return 0
 }
 
-warning_message() {
-    warn_message "$*"
-}
-
 error_message() {
     log "${RED}${BOLD}[ERROR]${NORMAL}" "$*"
     return 0
