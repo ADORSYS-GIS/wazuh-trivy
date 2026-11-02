@@ -5,6 +5,10 @@
 
 Wazuh and Trivy integration to scan Docker image vulnerabilities.
 
+## Documentation
+
+See the [documentation hub](docs/README.md) for the architecture, data flow, and multi-platform installation guide.
+
 ## Install
 
 Use the install script to download and install Trivy and configure your wazuh-agent as it should.
