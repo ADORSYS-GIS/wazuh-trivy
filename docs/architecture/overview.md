@@ -19,7 +19,7 @@ flowchart LR
         LOCALFILE["localfile collector<br/>(syslog)"]
     end
     subgraph Manager["Wazuh Manager"]
-        DECODER["Trivy decoder<br/>(custom_decoders_trity.xml)"]
+        DECODER["Trivy decoder<br/>(custom_decoders_trivy.xml)"]
         RULES["Trivy rules<br/>(custom_rules_trivy.xml)"]
         ALERT["Alerts"]
     end
@@ -42,7 +42,7 @@ flowchart LR
 
 4. **Collect**: The Wazuh agent monitors the log file via a `<localfile>` entry with `log_format syslog` and forwards the events to the manager.
 
-5. **Decode**: On the Wazuh manager, the custom decoder (`custom_decoders_trity.xml`) parses each log line into fields: `image`, `package`, `version`, `vulnerability_id`, and `severity`.
+5. **Decode**: On the Wazuh manager, the custom decoder (`custom_decoders_trivy.xml`) parses each log line into fields: `image`, `package`, `version`, `vulnerability_id`, and `severity`.
 
 6. **Alert**: On the Wazuh manager, the custom rules (`custom_rules_trivy.xml`) assign a severity level to each vulnerability and raise an alert.
 
@@ -50,11 +50,13 @@ flowchart LR
 
 | Severity | Rule ID | Level |
 | :--- | :--- | :--- |
+| Parent rule (any Trivy alert) | 100101 | 0 |
 | Critical | 100102 | 14 |
 | High | 100103 | 12 |
 | Medium | 100104 | 7 |
 | Low | 100105 | 4 |
 | Negligible | 100106 | 1 |
+| Unknown | 100107 | 7 |
 
 ## Scheduling
 
@@ -72,5 +74,5 @@ The scan runs on a schedule defined by the Wazuh wodle command in the agent conf
 | Install script (macOS) | `scripts/macos/install.sh` | Installs Trivy and configures the Wazuh agent |
 | Scan script (Linux) | `scripts/linux/trivy-scan.sh` | Runs the Trivy scan and writes the log |
 | Scan script (macOS) | `scripts/macos/trivy-scan.sh` | Runs the Trivy scan and writes the log |
-| Decoder | `config/custom_decoders_trity.xml` | Parses Trivy log lines |
+| Decoder | `config/custom_decoders_trivy.xml` | Parses Trivy log lines |
 | Rules | `config/custom_rules_trivy.xml` | Assigns severity and raises alerts |

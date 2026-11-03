@@ -38,7 +38,7 @@ Edit /var/ossec/etc/shared/**_your_linux_docker_group_**/agent.conf and add the 
 
 Snyk Scan detection rules:
 
-Create a file `custom_decoders_trity.xml` in the `/var/ossec/etc/decoders/` directory.
+Create a file `custom_decoders_trivy.xml` in the `/var/ossec/etc/decoders/` directory.
 
 ```xml
 <decoder name="trivy-decoder">

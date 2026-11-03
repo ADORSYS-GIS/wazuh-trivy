@@ -28,34 +28,53 @@ The script performs the following:
 6. Enables Wazuh remote commands (`wazuh_command.remote_commands=1`).
 7. Creates the log file `/var/ossec/logs/trivy-scan.log`.
 
+Restart the Wazuh agent so it loads the new internal options (remote commands are only read at startup):
+
+```bash
+sudo systemctl restart wazuh-agent
+```
+
 ### Configure the Wazuh agent
 
 On the Wazuh manager, edit the centralized agent configuration `/var/ossec/etc/shared/<your_linux_docker_group>/agent.conf` (this file is distributed to the agents in that group) and add the wodle command and log collector:
 
 ```xml
-<!-- Trivy container vulnerability scanner script -->
-<wodle name="command">
-  <disabled>no</disabled>
-  <command>/bin/bash /var/ossec/wodles/trivy-scan.sh</command>
-  <interval>12h</interval>
-  <ignore_output>no</ignore_output>
-  <run_on_start>yes</run_on_start>
-  <timeout>0</timeout>
-</wodle>
+<agent_config os="Linux">
+  <!-- Trivy container vulnerability scanner script -->
+  <wodle name="command">
+    <disabled>no</disabled>
+    <command>/bin/bash /var/ossec/wodles/trivy-scan.sh</command>
+    <interval>12h</interval>
+    <ignore_output>no</ignore_output>
+    <run_on_start>yes</run_on_start>
+    <timeout>0</timeout>
+  </wodle>
 
-<localfile>
+  <localfile>
     <log_format>syslog</log_format>
     <location>/var/ossec/logs/trivy-scan.log</location>
-</localfile>
+  </localfile>
+</agent_config>
 ```
 
 ### Add the decoder and rules
 
-Decoding and rule matching happen on the **Wazuh manager**, not the agent. Copy the decoder and rules to the manager's `/var/ossec/etc/decoders/` and `/var/ossec/etc/rules/` directories. The commands below assume you are running them from the repository root:
+Decoding and rule matching happen on the **Wazuh manager**, not the agent. Copy the decoder and rules to the manager's `/var/ossec/etc/decoders/` and `/var/ossec/etc/rules/` directories.
+
+If you installed the agent via `curl`, the repository is not cloned on the manager host. Clone it first (or download the two files directly):
 
 ```bash
-sudo cp config/custom_decoders_trity.xml /var/ossec/etc/decoders/
+git clone https://github.com/ADORSYS-GIS/wazuh-trivy.git
+cd wazuh-trivy
+```
+
+The commands below assume you are running them from the repository root. Copy the files, then set the correct ownership and permissions so the manager process (`wazuh`) can read them:
+
+```bash
+sudo cp config/custom_decoders_trivy.xml /var/ossec/etc/decoders/
 sudo cp config/custom_rules_trivy.xml /var/ossec/etc/rules/
+sudo chown wazuh:wazuh /var/ossec/etc/decoders/custom_decoders_trivy.xml /var/ossec/etc/rules/custom_rules_trivy.xml
+sudo chmod 660 /var/ossec/etc/decoders/custom_decoders_trivy.xml /var/ossec/etc/rules/custom_rules_trivy.xml
 ```
 
 Restart the Wazuh manager to load the new decoder and rules:
@@ -72,10 +91,10 @@ Confirm the scan log is being written:
 sudo tail -f /var/ossec/logs/trivy-scan.log
 ```
 
-Confirm the agent is collecting the log:
+Confirm the agent's log collector is actively monitoring the scan log:
 
 ```bash
-sudo /var/ossec/bin/wazuh-control status
+sudo grep -E "trivy-scan\.log" /var/ossec/logs/ossec.log
 ```
 
 ### Uninstall
@@ -103,23 +122,27 @@ The script follows the same steps as Linux but uses the macOS paths:
 
 ### Configure the Wazuh agent
 
-Add the wodle command and log collector to the agent configuration, pointing at the macOS log path:
+If you manage agents centrally, add the wodle command and log collector to the centralized `agent.conf` on the Wazuh manager, wrapped in an `<agent_config os="Darwin">` block and pointing at the macOS log path:
 
 ```xml
-<wodle name="command">
-  <disabled>no</disabled>
-  <command>/bin/bash /Library/Ossec/wodles/trivy-scan.sh</command>
-  <interval>12h</interval>
-  <ignore_output>no</ignore_output>
-  <run_on_start>yes</run_on_start>
-  <timeout>0</timeout>
-</wodle>
+<agent_config os="Darwin">
+  <wodle name="command">
+    <disabled>no</disabled>
+    <command>/bin/bash /Library/Ossec/wodles/trivy-scan.sh</command>
+    <interval>12h</interval>
+    <ignore_output>no</ignore_output>
+    <run_on_start>yes</run_on_start>
+    <timeout>0</timeout>
+  </wodle>
 
-<localfile>
+  <localfile>
     <log_format>syslog</log_format>
     <location>/Library/Ossec/logs/trivy-scan.log</location>
-</localfile>
+  </localfile>
+</agent_config>
 ```
+
+If you configure the agent locally instead, add the same blocks to the agent's `/Library/Ossec/etc/ossec.conf` inside the `<ossec_config>` element.
 
 ### Uninstall
 
