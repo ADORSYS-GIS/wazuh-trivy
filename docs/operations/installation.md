@@ -30,13 +30,13 @@ The script performs the following:
 
 ### Configure the Wazuh agent
 
-Edit `/var/ossec/etc/shared/<your_linux_docker_group>/agent.conf` and add the wodle command and log collector:
+On the Wazuh manager, edit the centralized agent configuration `/var/ossec/etc/shared/<your_linux_docker_group>/agent.conf` (this file is distributed to the agents in that group) and add the wodle command and log collector:
 
 ```xml
 <!-- Trivy container vulnerability scanner script -->
 <wodle name="command">
   <disabled>no</disabled>
-  <command>/bin/bash /var/ossec/wodles/trivy_scan.sh</command>
+  <command>/bin/bash /var/ossec/wodles/trivy-scan.sh</command>
   <interval>12h</interval>
   <ignore_output>no</ignore_output>
   <run_on_start>yes</run_on_start>
@@ -45,28 +45,23 @@ Edit `/var/ossec/etc/shared/<your_linux_docker_group>/agent.conf` and add the wo
 
 <localfile>
     <log_format>syslog</log_format>
-    <location>/var/ossec/logs/trivy_scan.log</location>
+    <location>/var/ossec/logs/trivy-scan.log</location>
 </localfile>
 ```
 
 ### Add the decoder and rules
 
-Copy the decoder to `/var/ossec/etc/decoders/`:
+Decoding and rule matching happen on the **Wazuh manager**, not the agent. Copy the decoder and rules to the manager's `/var/ossec/etc/decoders/` and `/var/ossec/etc/rules/` directories. The commands below assume you are running them from the repository root:
 
 ```bash
 sudo cp config/custom_decoders_trity.xml /var/ossec/etc/decoders/
-```
-
-Copy the rules to `/var/ossec/etc/rules/`:
-
-```bash
 sudo cp config/custom_rules_trivy.xml /var/ossec/etc/rules/
 ```
 
-Restart the Wazuh agent:
+Restart the Wazuh manager to load the new decoder and rules:
 
 ```bash
-sudo systemctl restart wazuh-agent
+sudo systemctl restart wazuh-manager
 ```
 
 ### Verify
@@ -113,7 +108,7 @@ Add the wodle command and log collector to the agent configuration, pointing at 
 ```xml
 <wodle name="command">
   <disabled>no</disabled>
-  <command>/bin/bash /Library/Ossec/wodles/trivy_scan.sh</command>
+  <command>/bin/bash /Library/Ossec/wodles/trivy-scan.sh</command>
   <interval>12h</interval>
   <ignore_output>no</ignore_output>
   <run_on_start>yes</run_on_start>
@@ -122,7 +117,7 @@ Add the wodle command and log collector to the agent configuration, pointing at 
 
 <localfile>
     <log_format>syslog</log_format>
-    <location>/Library/Ossec/logs/trivy_scan.log</location>
+    <location>/Library/Ossec/logs/trivy-scan.log</location>
 </localfile>
 ```
 

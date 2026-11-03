@@ -4,7 +4,7 @@ This is the central documentation hub for the `wazuh-trivy` project. It maps the
 
 ## Project Summary
 
-`wazuh-trivy` integrates the [Trivy](https://trivy.dev/) container image vulnerability scanner with the [Wazuh](https://wazuh.com/) security platform. It scans Docker images for known vulnerabilities and forwards the results to the Wazuh agent, which decodes and alerts on them, so container image vulnerabilities are visible in the Wazuh SIEM.
+`wazuh-trivy` integrates the [Trivy](https://trivy.dev/) container image vulnerability scanner with the [Wazuh](https://wazuh.com/) security platform. It scans Docker images for known vulnerabilities and writes the results to a log file that the Wazuh agent can read, so container image vulnerabilities are visible in the Wazuh SIEM.
 
 ## SDLC Map
 

@@ -17,10 +17,10 @@ flowchart LR
     end
     subgraph Agent["Wazuh Agent"]
         LOCALFILE["localfile collector<br/>(syslog)"]
-        DECODER["Trivy decoder<br/>(custom_decoders_trity.xml)"]
-        RULES["Trivy rules<br/>(custom_rules_trivy.xml)"]
     end
     subgraph Manager["Wazuh Manager"]
+        DECODER["Trivy decoder<br/>(custom_decoders_trity.xml)"]
+        RULES["Trivy rules<br/>(custom_rules_trivy.xml)"]
         ALERT["Alerts"]
     end
 
@@ -40,11 +40,11 @@ flowchart LR
 
 3. **Log**: The formatted results are appended to `trivy-scan.log` (`/var/ossec/logs/trivy-scan.log` on Linux, `/Library/Ossec/logs/trivy-scan.log` on macOS).
 
-4. **Collect**: The Wazuh agent monitors the log file via a `<localfile>` entry with `log_format syslog`.
+4. **Collect**: The Wazuh agent monitors the log file via a `<localfile>` entry with `log_format syslog` and forwards the events to the manager.
 
-5. **Decode**: The custom decoder (`custom_decoders_trity.xml`) parses each log line into fields: `image`, `package`, `version`, `vulnerability_id`, and `severity`.
+5. **Decode**: On the Wazuh manager, the custom decoder (`custom_decoders_trity.xml`) parses each log line into fields: `image`, `package`, `version`, `vulnerability_id`, and `severity`.
 
-6. **Alert**: The custom rules (`custom_rules_trivy.xml`) assign a severity level to each vulnerability and raise an alert in Wazuh.
+6. **Alert**: On the Wazuh manager, the custom rules (`custom_rules_trivy.xml`) assign a severity level to each vulnerability and raise an alert.
 
 ## Severity Mapping
 
