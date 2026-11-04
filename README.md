@@ -17,26 +17,28 @@ Use the install script to download and install Trivy and configure your wazuh-ag
 curl -SL --progress-bar https://raw.githubusercontent.com/ADORSYS-GIS/wazuh-trivy/refs/heads/main/scripts/linux/install.sh | sudo bash
 ```
 
-Edit /var/ossec/etc/shared/**_your_linux_docker_group_**/agent.conf and add the remote command:
+On the Wazuh manager, edit the centralized agent configuration `/var/ossec/etc/shared/**_your_linux_docker_group_**/agent.conf` and add the remote command (wrapped in an `<agent_config>` block):
 
 ```xml
-<!-- Trivy container vulnerability scanner script -->
-<wodle name="command">
-  <disabled>no</disabled>
-  <command>/bin/bash /var/ossec/wodles/trivy-scan.sh</command>
-  <interval>12h</interval>
-  <ignore_output>no</ignore_output>
-  <run_on_start>yes</run_on_start>
-  <timeout>0</timeout>
-</wodle>
+<agent_config os="Linux">
+  <!-- Trivy container vulnerability scanner script -->
+  <wodle name="command">
+    <disabled>no</disabled>
+    <command>/bin/bash /var/ossec/wodles/trivy-scan.sh</command>
+    <interval>12h</interval>
+    <ignore_output>no</ignore_output>
+    <run_on_start>yes</run_on_start>
+    <timeout>0</timeout>
+  </wodle>
 
-<localfile>
+  <localfile>
     <log_format>syslog</log_format>
     <location>/var/ossec/logs/trivy-scan.log</location>
-</localfile>
+  </localfile>
+</agent_config>
 ```
 
-Snyk Scan detection rules:
+Trivy Scan detection rules:
 
 Create a file `custom_decoders_trivy.xml` in the `/var/ossec/etc/decoders/` directory.
 

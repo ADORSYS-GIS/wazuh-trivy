@@ -88,9 +88,11 @@ sudo grep -E "trivy-scan\.log" /var/ossec/logs/ossec.log
 
 ### Uninstall
 
-Run the Linux uninstall script:
+Run the Linux uninstall script. If you installed via the `curl` one-liner, the repository is not cloned locally, so clone it first:
 
 ```bash
+git clone https://github.com/ADORSYS-GIS/wazuh-trivy.git
+cd wazuh-trivy
 sudo bash scripts/linux/uninstall.sh
 ```
 
@@ -108,6 +110,12 @@ The script follows the same steps as Linux but uses the macOS paths:
 
 - Scan script: `/Library/Ossec/wodles/trivy-scan.sh`
 - Log file: `/Library/Ossec/logs/trivy-scan.log`
+
+Restart the Wazuh agent so it loads the new internal options (remote commands are only read at startup):
+
+```bash
+sudo /Library/Ossec/bin/wazuh-control restart
+```
 
 ### Configure the Wazuh agent
 
@@ -135,9 +143,11 @@ If you configure the agent locally instead, add the same blocks to the agent's `
 
 ### Uninstall
 
-Run the macOS uninstall script:
+Run the macOS uninstall script. If you installed via the `curl` one-liner, the repository is not cloned locally, so clone it first:
 
 ```bash
+git clone https://github.com/ADORSYS-GIS/wazuh-trivy.git
+cd wazuh-trivy
 sudo bash scripts/macos/uninstall.sh
 ```
 
