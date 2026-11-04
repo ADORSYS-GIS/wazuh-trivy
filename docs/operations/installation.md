@@ -59,22 +59,11 @@ On the Wazuh manager, edit the centralized agent configuration `/var/ossec/etc/s
 
 ### Add the decoder and rules
 
-Decoding and rule matching happen on the **Wazuh manager**, not the agent. Copy the decoder and rules to the manager's `/var/ossec/etc/decoders/` and `/var/ossec/etc/rules/` directories.
-
-If you installed the agent via `curl`, the repository is not cloned on the manager host. Clone it first (or download the two files directly):
-
-```bash
-git clone https://github.com/ADORSYS-GIS/wazuh-trivy.git
-cd wazuh-trivy
-```
-
-The commands below assume you are running them from the repository root. Copy the files, then set the correct ownership and permissions so the manager process (`wazuh`) can read them:
+Decoding and rule matching happen on the **Wazuh manager**, not the agent. Copy the decoder and rules to the manager's `/var/ossec/etc/decoders/` and `/var/ossec/etc/rules/` directories (run from the repository root):
 
 ```bash
 sudo cp config/custom_decoders_trivy.xml /var/ossec/etc/decoders/
 sudo cp config/custom_rules_trivy.xml /var/ossec/etc/rules/
-sudo chown wazuh:wazuh /var/ossec/etc/decoders/custom_decoders_trivy.xml /var/ossec/etc/rules/custom_rules_trivy.xml
-sudo chmod 660 /var/ossec/etc/decoders/custom_decoders_trivy.xml /var/ossec/etc/rules/custom_rules_trivy.xml
 ```
 
 Restart the Wazuh manager to load the new decoder and rules:

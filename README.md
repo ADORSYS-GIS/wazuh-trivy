@@ -14,7 +14,7 @@ See the [documentation hub](docs/README.md) for the architecture, data flow, and
 Use the install script to download and install Trivy and configure your wazuh-agent as it should.
 
 ```bash
-curl -SL --progress-bar https://raw.githubusercontent.com/ADORSYS-GIS/wazuh-trivy/refs/heads/main/install.sh | sudo bash
+curl -SL --progress-bar https://raw.githubusercontent.com/ADORSYS-GIS/wazuh-trivy/refs/heads/main/scripts/linux/install.sh | sudo bash
 ```
 
 Edit /var/ossec/etc/shared/**_your_linux_docker_group_**/agent.conf and add the remote command:
