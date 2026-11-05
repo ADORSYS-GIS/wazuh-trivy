@@ -15,7 +15,7 @@ fi
 
 # Repository reference
 WAZUH_TRIVY_REPO_REF=${WAZUH_TRIVY_REPO_REF:-"main"}
-WAZUH_TRIVY_REPO_URL="https://raw.githubusercontent.com/ADORSYS-GIS/wazuh-suricata/${WAZUH_TRIVY_REPO_REF}"
+WAZUH_TRIVY_REPO_URL="https://raw.githubusercontent.com/ADORSYS-GIS/wazuh-trivy/${WAZUH_TRIVY_REPO_REF}"
 
 # Source shared utilities
 TMP_DIR=$(mktemp -d)
@@ -92,7 +92,7 @@ remove_remote_commands_config() {
             info_message "Remote commands config not found, skipping."
         fi
     else
-        warning_message "$LOCAL_INTERNAL_OPTIONS_CONF not found, skipping."
+        warn_message "$LOCAL_INTERNAL_OPTIONS_CONF not found, skipping."
     fi
 }
 

@@ -85,6 +85,7 @@ maybe_sudo() {
     if [[ "$(id -u)" -ne 0 ]]; then
         if command_exists sudo; then
             sudo "$@"
+            return $?
         else
             error_exit "This script requires root privileges. Please run with sudo or as root."
         fi
@@ -92,7 +93,6 @@ maybe_sudo() {
         "$@"
         return $?
     fi
-    return 0
 }
 
 remove_file() {
