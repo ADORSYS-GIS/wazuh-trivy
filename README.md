@@ -2,6 +2,8 @@
 
 [![Test install.sh](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/test.yaml/badge.svg?branch=main)](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/test.yaml)
 [![SonarQube](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/sonarqube.yml/badge.svg)](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/sonarqube.yml)
+[![Static Application Security Testing](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/sast.yml/badge.svg)](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/sast.yml)
+[![Dependabot Updates](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/ADORSYS-GIS/wazuh-trivy/actions/workflows/dependabot/dependabot-updates)
 
 Wazuh and Trivy integration to scan Docker image vulnerabilities.
 
