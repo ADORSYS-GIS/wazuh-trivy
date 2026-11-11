@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Check if we're running in bash; if not, adjust behavior
-if [ -n "$BASH_VERSION" ]; then
+if [[ -n "$BASH_VERSION" ]]; then
     set -euo pipefail
 else
     set -eu
@@ -74,16 +74,18 @@ sed_alternative() {
     else
         maybe_sudo sed "$@"
     fi
+    return 0
 }
 
 remove_trivy_files() {
     remove_file "$TRIVY_SCAN_SCRIPT_PATH"
     remove_file "$TRIVY_SCAN_LOG_PATH"
     remove_file "$TRIVY_BIN_DIR/trivy"
+    return 0
 }
 
 remove_remote_commands_config() {
-    if [ -f "$LOCAL_INTERNAL_OPTIONS_CONF" ]; then
+    if [[ -f "$LOCAL_INTERNAL_OPTIONS_CONF" ]]; then
         if grep -q "^$REMOTE_COMMANDS_CONFIG" "$LOCAL_INTERNAL_OPTIONS_CONF"; then
             info_message "Removing remote_commands config from $LOCAL_INTERNAL_OPTIONS_CONF..."
             # macOS sed requires a backup extension with -i
@@ -96,6 +98,7 @@ remove_remote_commands_config() {
     else
         warn_message "$LOCAL_INTERNAL_OPTIONS_CONF not found, skipping."
     fi
+    return 0
 }
 
 remove_trivy_files

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Check if we're running in bash; if not, adjust behavior
-if [ -n "$BASH_VERSION" ]; then
+if [[ -n "$BASH_VERSION" ]]; then
     set -euo pipefail
 else
     set -eu
@@ -85,7 +85,7 @@ install_trivy() {
     local installed_version=""
     if command_exists trivy; then
         installed_version="$(trivy --version 2>/dev/null | awk '/Version:/ {print $2}')"
-        if [ "$installed_version" = "$TRIVY_VERSION" ]; then
+        if [[ "$installed_version" = "$TRIVY_VERSION" ]]; then
             info_message "Trivy $TRIVY_VERSION is already installed, skipping installation."
             return
         else
@@ -100,6 +100,7 @@ install_trivy() {
         exit 1
     fi
     success_message "Trivy $TRIVY_VERSION installed successfully."
+    return 0
 }
 
 setup_trivy_scan_script() {
@@ -111,6 +112,7 @@ setup_trivy_scan_script() {
     maybe_sudo chown "$OSSEC_USER:$OSSEC_GROUP" "$TRIVY_SCAN_SCRIPT_PATH"
     maybe_sudo chmod 750 "$TRIVY_SCAN_SCRIPT_PATH"
     success_message "trivy-scan.sh downloaded and configured."
+    return 0
 }
 
 configure_remote_commands() {
@@ -121,10 +123,11 @@ configure_remote_commands() {
     else
         info_message "Remote commands configuration already present."
     fi
+    return 0
 }
 
 create_trivy_log_file() {
-    if [ ! -f "$TRIVY_SCAN_LOG_PATH" ]; then
+    if [[ ! -f "$TRIVY_SCAN_LOG_PATH" ]]; then
         info_message "Creating trivy log file..."
         maybe_sudo touch "$TRIVY_SCAN_LOG_PATH"
         maybe_sudo chown "$OSSEC_USER:$OSSEC_GROUP" "$TRIVY_SCAN_LOG_PATH"
@@ -132,6 +135,7 @@ create_trivy_log_file() {
     else
         info_message "Trivy log file already exists, skipping."
     fi
+    return 0
 }
 
 if ! has_container_engine; then

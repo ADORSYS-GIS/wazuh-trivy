@@ -9,9 +9,10 @@ LOG_FILE=${LOG_FILE:-"/var/ossec/logs/trivy-scan.log"}
 
 cleanup() {
     # Remove temporary file
-    if [ -f "$TEMPLATE_FILE" ]; then
+    if [[ -f "$TEMPLATE_FILE" ]]; then
         rm -f "$TEMPLATE_FILE"
     fi
+    return 0
 }
 
 trap cleanup EXIT
@@ -38,17 +39,18 @@ detect_container_engine() {
         echo "No supported container engine found. Please install Docker, Podman, or containerd."
         exit 1
     fi
+    return 0
 }
 
 # Retrieve the container engine
 CONTAINER_ENGINE=$(detect_container_engine)
 
 # Retrieve list of container images
-if [ "$CONTAINER_ENGINE" == "docker" ]; then
+if [[ "$CONTAINER_ENGINE" == "docker" ]]; then
     images=$(docker images --format "{{.Repository}}:{{.Tag}}")
-elif [ "$CONTAINER_ENGINE" == "podman" ]; then
+elif [[ "$CONTAINER_ENGINE" == "podman" ]]; then
     images=$(podman images --format "{{.Repository}}:{{.Tag}}")
-elif [ "$CONTAINER_ENGINE" == "containerd" ]; then
+elif [[ "$CONTAINER_ENGINE" == "containerd" ]]; then
     images=$(
       sudo ctr namespaces list -q 2>/dev/null | while read -r ns; do
         sudo ctr -n "$ns" images list -q 2>/dev/null
@@ -59,7 +61,7 @@ else
     exit 1
 fi
 
-if [ -z "$images" ]; then
+if [[ -z "$images" ]]; then
   echo "Trivy: No images found. Exiting..." >> "$LOG_FILE"
   exit 1
 fi
